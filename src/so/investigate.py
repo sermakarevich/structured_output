@@ -18,7 +18,7 @@ class Investigation(BaseModel):
     resolved: bool
 
 
-async def investigate(doc_text: str, low_confidence: list[MergedField]) -> list[Investigation]:
+async def investigate(pages: list[str], low_confidence: list[MergedField]) -> list[Investigation]:
     if not low_confidence:
         return []
 
@@ -29,7 +29,7 @@ async def investigate(doc_text: str, low_confidence: list[MergedField]) -> list[
             logger.info("investigating %s (confidence %d)", field.path, field.confidence)
             candidates = [(g.canonical_value, g.count) for g in field.candidates]
             result = await llm.structured(
-                prompts.investigation_prompt(doc_text, field.path, candidates), Investigation
+                prompts.investigation_prompt(field.path, candidates), Investigation, images=pages
             )
             result.path = field.path
             logger.info("investigated %s: resolved=%s", field.path, result.resolved)

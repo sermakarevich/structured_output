@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 class AllRunsFailedError(Exception): ...
 
 
-async def extract_n_times(doc_text: str) -> list[ReportExtraction]:
-    prompt = extraction_prompt(doc_text)
+async def extract_n_times(pages: list[str]) -> list[ReportExtraction]:
+    prompt = extraction_prompt()
     semaphore = asyncio.Semaphore(config.CONCURRENCY)
 
     async def run() -> ReportExtraction:
         async with semaphore:
-            return await llm.structured(prompt, ReportExtraction)
+            return await llm.structured(prompt, ReportExtraction, images=pages)
 
     results = await asyncio.gather(
         *(run() for _ in range(config.N_RUNS)), return_exceptions=True

@@ -7,6 +7,8 @@ from so.investigate import Investigation
 from so.merge import MergedField, ValueGroup
 from so.schema import ReportExtraction
 
+PAGES = ["img1", "img2"]
+
 
 def _field(path: str, confidence: int) -> MergedField:
     return MergedField(
@@ -21,8 +23,8 @@ def _field(path: str, confidence: int) -> MergedField:
 async def test_run_wires_stages_and_filters_by_threshold(monkeypatch):
     fields = [_field("title", 5), _field("publisher.name", 1)]
 
-    async def fake_extract_n_times(text):
-        assert text == "doc text"
+    async def fake_extract_n_times(pages):
+        assert pages == PAGES
         return [ReportExtraction(), ReportExtraction()]
 
     async def fake_merge(extractions):
@@ -31,11 +33,12 @@ async def test_run_wires_stages_and_filters_by_threshold(monkeypatch):
 
     investigated_paths = []
 
-    async def fake_investigate(text, low_confidence):
+    async def fake_investigate(pages, low_confidence):
+        assert pages == PAGES
         investigated_paths.extend(f.path for f in low_confidence)
         return [Investigation(path="publisher.name", verdict="x", reasoning="r", resolved=True)]
 
-    monkeypatch.setattr(main, "load_pdf", lambda path: "doc text")
+    monkeypatch.setattr(main, "render_pdf", lambda path: PAGES)
     monkeypatch.setattr(main, "extract_n_times", fake_extract_n_times)
     monkeypatch.setattr(main, "merge", fake_merge)
     monkeypatch.setattr(main, "investigate", fake_investigate)
@@ -52,10 +55,10 @@ async def test_run_wires_stages_and_filters_by_threshold(monkeypatch):
 async def test_result_serializes_to_json(monkeypatch):
     fields = [_field("title", 5)]
 
-    monkeypatch.setattr(main, "load_pdf", lambda path: "doc text")
-    monkeypatch.setattr(main, "extract_n_times", lambda text: _async_return([ReportExtraction()]))
+    monkeypatch.setattr(main, "render_pdf", lambda path: PAGES)
+    monkeypatch.setattr(main, "extract_n_times", lambda pages: _async_return([ReportExtraction()]))
     monkeypatch.setattr(main, "merge", lambda extractions: _async_return(fields))
-    monkeypatch.setattr(main, "investigate", lambda text, low_confidence: _async_return([]))
+    monkeypatch.setattr(main, "investigate", lambda pages, low_confidence: _async_return([]))
 
     result = await main.run()
     data = json.loads(result.model_dump_json())

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from so import config
 from so.extract import extract_n_times
 from so.investigate import Investigation, investigate
-from so.loader import load_pdf
+from so.loader import render_pdf
 from so.merge import MergedField, merge
 
 logger = logging.getLogger(__name__)
@@ -20,11 +20,11 @@ class Result(BaseModel):
 
 
 async def run() -> Result:
-    text = load_pdf(config.PDF_PATH)
-    extractions = await extract_n_times(text)
+    pages = render_pdf(config.PDF_PATH)
+    extractions = await extract_n_times(pages)
     merged = await merge(extractions)
     shaky = [f for f in merged if f.confidence < config.CONFIDENCE_THRESHOLD]
-    investigations = await investigate(text, shaky)
+    investigations = await investigate(pages, shaky)
     return Result(
         document=config.PDF_PATH,
         n_runs=len(extractions),

@@ -8,7 +8,6 @@ ERROR_SNIPPET_CHARS = 200
 PDF_PATH = "the-next-big-arenas-of-competition-executive-summary-final.pdf"
 N_RUNS = 10
 CONFIDENCE_THRESHOLD = 3
-MAX_DOC_CHARS = 60_000
 CONCURRENCY = 3
 RENDER_DPI = 100
 

@@ -1,12 +1,12 @@
-def extraction_prompt(doc_text: str) -> str:
+def extraction_prompt() -> str:
     return (
-        "Read the document below and fill every field of the JSON schema. "
+        "The document is provided as one image per page. Read all pages, including "
+        "charts, tables and figures, and fill every field of the JSON schema. "
         "Use null when the document does not state a value. "
         "Numbers must be given as numbers, and dates written exactly as they appear in the document. "
         "For nested organization fields, the parent company goes in the outer `name` field and any "
         "named sub-unit (institute, research arm, division) goes in `business_unit`. "
-        "Respond with JSON only.\n\n"
-        f"DOCUMENT:\n{doc_text}"
+        "Respond with JSON only."
     )
 
 
@@ -24,7 +24,7 @@ def merge_prompt(path: str, variants: list[str]) -> str:
     )
 
 
-def investigation_prompt(doc_text: str, path: str, candidates: list[tuple[str | None, int]]) -> str:
+def investigation_prompt(path: str, candidates: list[tuple[str | None, int]]) -> str:
     listed = "\n".join(
         f"{value if value is not None else 'not found'} — {count} runs"
         for value, count in candidates
@@ -33,8 +33,7 @@ def investigation_prompt(doc_text: str, path: str, candidates: list[tuple[str | 
         f"Independent extraction runs disagreed about the field `{path}`. "
         "Here are the candidate values with how many runs produced each:\n"
         f"{listed}\n\n"
-        "Re-read the document and decide the correct value. "
-        "Cite a short verbatim quote from the document as evidence. "
-        "Set resolved=false if the document is genuinely ambiguous.\n\n"
-        f"DOCUMENT:\n{doc_text}"
+        "Re-read the attached page images, including charts and tables, and decide the correct value. "
+        "Cite where in the document the evidence is, with a short verbatim quote. "
+        "Set resolved=false if the document is genuinely ambiguous."
     )
