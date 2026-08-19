@@ -96,35 +96,49 @@ Flat modules inside the `so` package, no CLI framework — `uv run so`
 One pydantic model tree; nesting is the point of the demo. Every leaf carries a
 `Field(description=...)` — descriptions are what the model extracts against.
 
+The schema focuses on the report's core payload: **the full table of future arenas
+with all their per-arena parameters** (2022 revenue, projected 2040 revenue range,
+growth-rate range) — data that largely lives in charts, which is why the pipeline
+sends page images.
+
 ```python
 class Publisher(BaseModel):
-    name: str | None          # "Organization that published the report"
-    business_unit: str | None # "Research arm / institute within the organization"
+    name: str | None            # "Organization that published the report"
+    business_unit: str | None   # "Research arm / institute within the organization"
 
-class RevenueProjection(BaseModel):
-    low_trillions_usd: float | None   # "Lower bound of projected 2040 revenue, trillions USD"
-    high_trillions_usd: float | None  # "Upper bound of projected 2040 revenue, trillions USD"
-    target_year: int | None           # "Year the projection refers to"
+class Range(BaseModel):
+    low: float | None           # "Lower bound of the range"
+    high: float | None          # "Upper bound of the range"
 
 class Arena(BaseModel):
-    name: str | None          # "Name of the arena of competition"
+    name: str | None                        # "Name of the arena of competition"
+    revenue_2022_billion_usd: float | None  # "2022 revenue, billions USD; null if n/a"
+    revenue_2040_billion_usd: Range         # "Projected 2040 revenue range, billions USD"
+    growth_rate_pct: Range                  # "Projected annual growth rate range to 2040, percent"
 
 class ReportExtraction(BaseModel):   # ← the one schema of the demo
     title: str | None
     publication_date: str | None
     publisher: Publisher
-    revenue_projection: RevenueProjection
-    num_arenas: int | None
-    example_arenas: list[Arena]      # "Up to 5 arenas named in the document"
+    num_arenas: int | None       # "Number of future arenas identified"
+    arenas: list[Arena]          # "EVERY future arena in the report with all its parameters"
 ```
 
 ### Leaf paths
 
 Merging and confidence work on **leaf paths** — dotted field paths into the nested
-structure (`publisher.name`, `revenue_projection.low_trillions_usd`, ...). One tiny
-helper in `merge.py` flattens a `ReportExtraction` into `{path: value}`; lists are
-flattened as a whole (the sorted list of arena names is one leaf value). This keeps
-nesting in the schema while the consensus logic stays a flat, obvious dict.
+structure (`publisher.name`, `arenas.cybersecurity.revenue_2040_billion_usd.low`, ...).
+One tiny helper in `merge.py` flattens a `ReportExtraction` into `{path: value}`.
+
+The `arenas` list is keyed **by normalized arena name** (strip, casefold, collapse
+whitespace), NOT by list index — different runs may order the arenas differently.
+Each arena flattens into `arenas.<normalized name>.<param>` leaves (the `name` field
+itself is the key and gets no leaf). When merging N runs, the path set is the union
+across runs; a run that missed an arena contributes None for that arena's leaves.
+Runs that spell an arena differently produce separate low-count paths — which is the
+confidence mechanism working as intended: those land under the threshold and get
+investigated. This keeps nesting in the schema while the consensus logic stays a
+flat, obvious dict.
 
 ## llm.py — the only I/O abstraction
 
