@@ -15,12 +15,20 @@ T = TypeVar("T", bound=BaseModel)
 class StructuredOutputError(Exception): ...
 
 
-async def _call(client: httpx.AsyncClient, prompt: str, response_model: type[T]) -> str:
+async def _call(
+    client: httpx.AsyncClient,
+    prompt: str,
+    response_model: type[T],
+    images: list[str] | None,
+) -> str:
+    message = {"role": "user", "content": prompt}
+    if images is not None:
+        message["images"] = images
     resp = await client.post(
         f"{config.BASE_URL}/api/chat",
         json={
             "model": config.MODEL,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [message],
             "stream": False,
             "format": response_model.model_json_schema(),
             "options": {"temperature": config.TEMPERATURE},
@@ -30,14 +38,14 @@ async def _call(client: httpx.AsyncClient, prompt: str, response_model: type[T])
     return resp.json()["message"]["content"]
 
 
-async def structured(prompt: str, response_model: type[T]) -> T:
+async def structured(prompt: str, response_model: type[T], images: list[str] | None = None) -> T:
     logger.debug("structured call start: model=%s", response_model.__name__)
     start = time.monotonic()
     async with httpx.AsyncClient(timeout=config.TIMEOUT_S) as client:
         content = ""
         for attempt in range(config.MAX_ATTEMPTS):
             try:
-                content = await _call(client, prompt, response_model)
+                content = await _call(client, prompt, response_model, images)
                 result = response_model.model_validate_json(content)
             except (ValidationError, ValueError) as e:
                 logger.warning("structured call attempt %d failed: %s", attempt + 1, e)

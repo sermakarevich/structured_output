@@ -91,3 +91,41 @@ async def test_request_contains_schema(monkeypatch):
 
     body = json.loads(sent)
     assert body["format"] == Item.model_json_schema()
+
+
+@pytest.mark.asyncio
+async def test_images_included_when_passed(monkeypatch):
+    handler, calls = make_handler(['{"name": "a", "count": 1}'])
+
+    orig_init = httpx.AsyncClient.__init__
+
+    def fake_init(self, *args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return orig_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", fake_init)
+
+    await llm.structured("prompt", Item, images=["abc"])
+    import json
+
+    body = json.loads(calls[0].content)
+    assert body["messages"][0]["images"] == ["abc"]
+
+
+@pytest.mark.asyncio
+async def test_images_omitted_when_not_passed(monkeypatch):
+    handler, calls = make_handler(['{"name": "a", "count": 1}'])
+
+    orig_init = httpx.AsyncClient.__init__
+
+    def fake_init(self, *args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return orig_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__init__", fake_init)
+
+    await llm.structured("prompt", Item)
+    import json
+
+    body = json.loads(calls[0].content)
+    assert "images" not in body["messages"][0]
