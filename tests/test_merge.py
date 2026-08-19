@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from so import merge
 from so.merge import MergeGroup, MergeGroups
-from so.schema import Arena, Publisher, ReportExtraction, RevenueProjection
+from so.schema import Arena, Publisher, ReportExtraction
 
 
 def make_extraction(**kwargs):
@@ -15,9 +15,16 @@ def test_flatten_all_paths():
         title="Report",
         publication_date="2024",
         publisher=Publisher(name="Org", business_unit="Research"),
-        revenue_projection=RevenueProjection(low_trillions_usd=1.0, high_trillions_usd=2.0, target_year=2030),
         num_arenas=2,
-        example_arenas=[Arena(name="AI"), Arena(name="Robotics")],
+        arenas=[
+            Arena(
+                name="AI",
+                revenue_2022_billion_usd=10.0,
+                revenue_2040_billion_usd={"low": 20.0, "high": 30.0},
+                growth_rate_pct={"low": 5.0, "high": 8.0},
+            ),
+            Arena(name="Robotics"),
+        ],
     )
     flat = merge.flatten(extraction)
     assert flat == {
@@ -25,19 +32,41 @@ def test_flatten_all_paths():
         "publication_date": "2024",
         "publisher.name": "Org",
         "publisher.business_unit": "Research",
-        "revenue_projection.low_trillions_usd": "1.0",
-        "revenue_projection.high_trillions_usd": "2.0",
-        "revenue_projection.target_year": "2030",
         "num_arenas": "2",
-        "example_arenas": "AI, Robotics",
+        "arenas.ai.revenue_2022_billion_usd": "10.0",
+        "arenas.ai.revenue_2040_billion_usd.low": "20.0",
+        "arenas.ai.revenue_2040_billion_usd.high": "30.0",
+        "arenas.ai.growth_rate_pct.low": "5.0",
+        "arenas.ai.growth_rate_pct.high": "8.0",
+        "arenas.robotics.revenue_2022_billion_usd": None,
+        "arenas.robotics.revenue_2040_billion_usd.low": None,
+        "arenas.robotics.revenue_2040_billion_usd.high": None,
+        "arenas.robotics.growth_rate_pct.low": None,
+        "arenas.robotics.growth_rate_pct.high": None,
     }
 
 
 def test_flatten_empty_arenas_is_none():
     extraction = make_extraction()
     flat = merge.flatten(extraction)
-    assert flat["example_arenas"] is None
     assert flat["title"] is None
+    assert not any(k.startswith("arenas.") for k in flat)
+
+
+def test_flatten_arena_name_normalized():
+    a = make_extraction(arenas=[Arena(name="E-commerce ")])
+    b = make_extraction(arenas=[Arena(name="e-commerce")])
+    flat_a = merge.flatten(a)
+    flat_b = merge.flatten(b)
+    assert any(k.startswith("arenas.e-commerce.") for k in flat_a)
+    assert set(flat_a.keys()) == set(flat_b.keys())
+
+
+def test_flatten_null_name_arena_skipped(caplog):
+    extraction = make_extraction(arenas=[Arena(name=None), Arena(name="AI")])
+    flat = merge.flatten(extraction)
+    assert any(k.startswith("arenas.ai.") for k in flat)
+    assert len([k for k in flat if k.startswith("arenas.")]) == 5
 
 
 def test_flatten_generic_list_field_of_scalars_and_models():
@@ -57,6 +86,28 @@ def test_flatten_generic_list_field_of_scalars_and_models():
     flat_empty = merge.flatten(empty)
     assert flat_empty["tags"] is None
     assert flat_empty["entries"] is None
+
+
+@pytest.mark.asyncio
+async def test_union_path_missing_arena_counts_as_none(monkeypatch):
+    async def fake_structured(prompt, response_model):
+        raise AssertionError("llm should not be called")
+
+    monkeypatch.setattr(merge.llm, "structured", fake_structured)
+
+    runs_with_value = [
+        make_extraction(arenas=[Arena(name="robotics", revenue_2022_billion_usd=5.0)])
+        for _ in range(2)
+    ]
+    run_without = make_extraction()
+    results = await merge.merge(runs_with_value + [run_without])
+
+    path = "arenas.robotics.revenue_2022_billion_usd"
+    field = next(f for f in results if f.path == path)
+    assert field.value == "5.0"
+    assert field.confidence == 2
+    null_group = next(g for g in field.candidates if g.canonical_value is None)
+    assert null_group.count == 1
 
 
 @pytest.mark.asyncio

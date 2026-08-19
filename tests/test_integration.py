@@ -5,16 +5,12 @@ import pytest
 from so import config
 from so import main
 
-LEAF_PATHS = {
+SCALAR_LEAF_PATHS = {
     "title",
     "publication_date",
     "publisher.name",
     "publisher.business_unit",
-    "revenue_projection.low_trillions_usd",
-    "revenue_projection.high_trillions_usd",
-    "revenue_projection.target_year",
     "num_arenas",
-    "example_arenas",
 }
 
 
@@ -22,7 +18,9 @@ LEAF_PATHS = {
 def test_pipeline_against_real_backend():
     result = asyncio.run(main.run())
 
-    assert {f.path for f in result.fields} == LEAF_PATHS
+    paths = {f.path for f in result.fields}
+    assert SCALAR_LEAF_PATHS <= paths
+    assert any(p.startswith("arenas.") for p in paths)
     assert result.n_runs >= 8
     title = next(f for f in result.fields if f.path == "title")
     assert title.confidence >= 6

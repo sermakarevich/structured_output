@@ -39,10 +39,30 @@ def _stringify_item(item) -> str:
     return str(item)
 
 
+def _normalize(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip().casefold())
+
+
+def _flatten_arenas(name: str, arenas: list) -> dict[str, str | None]:
+    result: dict[str, str | None] = {}
+    for arena in arenas:
+        if arena.name is None:
+            logger.warning("flatten %s: arena with null name skipped", name)
+            continue
+        key = _normalize(arena.name)
+        for sub_path, sub_value in flatten(arena).items():
+            if sub_path == "name":
+                continue
+            result[f"{name}.{key}.{sub_path}"] = sub_value
+    return result
+
+
 def flatten(extraction: BaseModel) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for name, value in extraction:
-        if isinstance(value, list):
+        if name == "arenas":
+            result.update(_flatten_arenas(name, value))
+        elif isinstance(value, list):
             items = sorted(s for i in value if (s := _stringify_item(i)))
             result[name] = ", ".join(items) if items else None
         elif isinstance(value, BaseModel):
@@ -51,10 +71,6 @@ def flatten(extraction: BaseModel) -> dict[str, str | None]:
         else:
             result[name] = str(value) if value is not None else None
     return result
-
-
-def _normalize(value: str) -> str:
-    return re.sub(r"\s+", " ", value.strip().casefold())
 
 
 def _exact_groups(values: list[str | None]) -> list[ValueGroup]:
@@ -83,11 +99,11 @@ def _exact_groups(values: list[str | None]) -> list[ValueGroup]:
 
 async def merge(extractions: list[ReportExtraction]) -> list[MergedField]:
     flattened = [flatten(e) for e in extractions]
-    paths = list(flattened[0].keys()) if flattened else []
+    paths = sorted({path for f in flattened for path in f})
 
     merged_fields = []
     for path in paths:
-        values = [f[path] for f in flattened]
+        values = [f.get(path) for f in flattened]
         exact_groups = _exact_groups(values)
         distinct_non_null = [g for g in exact_groups if g.canonical_value is not None]
 
