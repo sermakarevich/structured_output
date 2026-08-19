@@ -14,20 +14,50 @@ fields that scored low.
 ## Pipeline
 
 ```
-1 PDF  +  1 nested schema
+1 PDF (17 pages → 17 PNGs)  +  1 nested schema
         │
         ▼
-  extract 10×          ← the same structured-output call, repeated N_RUNS times
-        │
+  extract 10×          ← the same structured-output call on the page images,
+        │                 repeated N_RUNS times
         ▼
-  merge (LLM)          ← group semantically equal values ("MGI" == "McKinsey Global Institute")
+  merge (LLM)          ← flatten to leaf paths, group semantically equal values
+        │                 ("MGI" == "McKinsey Global Institute")
         │                 confidence = number of runs (out of 10) that produced the value
         ▼
-  investigate (LLM)    ← every leaf field with confidence < 3 gets a focused
-        │                 second-look call with the disagreeing candidates
+  investigate (LLM)    ← a focused second-look call, with the disagreeing candidates,
+        │                 for every leaf whose confidence < 3, and for every leaf where
+        │                 "not found" won but some runs did find a value
         ▼
   result.json          ← final values + confidence + investigation notes
 ```
+
+The pages go to the model as images, not text, so numbers that only exist inside
+the exhibit charts are readable.
+
+## What gets extracted
+
+The schema is nested: report metadata plus **every** arena of competition in the
+report, each with its 2022 revenue, its 2040 revenue range and its growth-rate
+range. Consensus works on flat dotted leaf paths, and the arena list is keyed by
+normalized arena name rather than list position, because runs order the arenas
+differently:
+
+```
+title
+publisher.name
+num_arenas
+arenas.cybersecurity.revenue_2022_billion_usd
+arenas.cybersecurity.revenue_2040_billion_usd.low
+arenas.cybersecurity.revenue_2040_billion_usd.high
+arenas.cybersecurity.growth_rate_pct.low
+arenas.cybersecurity.growth_rate_pct.high
+...
+```
+
+When two runs spell the same arena differently ("electric vehicles" vs "electric
+vehicles (evs)"), each spelling becomes its own low-confidence path — which is
+the mechanism working as intended: both land under the threshold and get
+investigated.
 
 See [DESIGN.md](DESIGN.md) for the full design and contracts.
 
@@ -64,13 +94,43 @@ threshold, concurrency — lives in `config.py`.
 
 ## Sample output
 
+A real 7-run pass over the bundled report (18 arenas, ~145 leaf paths):
+
 ```
-PATH                          VALUE                                     CONFIDENCE  INVESTIGATED
-title                         The Next Big Arenas of Competition        10/10       -
-publication_date              2024                                      8/10        -
-publisher.name                McKinsey Global Institute                 6/10        -
-publisher.business_unit       MGI                                       2/10        McKinsey Global Institute
-revenue_projection.low_trillions_usd  9                                 9/10        -
-num_arenas                    18                                        10/10       -
-full result written to result.json
+PATH                                                                           VALUE       CONFIDENCE  INVESTIGATED
+arenas.ai software and services.revenue_2022_billion_usd                      85.0        7/7         -
+arenas.batteries.revenue_2022_billion_usd                                     90.0        6/7         -
+arenas.biopharmaceuticals.growth_rate_pct.high                                            6/7         not_found
+arenas.digital advertising.growth_rate_pct.high                               24.0        2/7         24.0
+arenas.electric vehicles (evs).revenue_2022_billion_usd                                   6/7         1000.0
+arenas.electric vehicles.revenue_2040_billion_usd.high                        12000.0     2/7         13000.0
+arenas.shared autonomous vehicles.growth_rate_pct.high                                    4/7         not found
+arenas.software.growth_rate_pct.low                                                       6/7         17.0
+num_arenas                                                                                 5/7         18
+publication_date                                                                           4/7         October 2024
+publisher.name                                                                McKinsey & Company  7/7  -
+title                                                                         The next big arenas of competition  5/7  -
 ```
+
+(full table has one row per arena × per numeric field; see `result.json` after
+a run for all of them)
+
+A few rows show the mechanism at work:
+
+- **`num_arenas` (5/7, investigated → 18)** — most runs left it null, but two
+  runs disagreed with a value, so the null "win" gets a second look and the
+  real count is recovered.
+- **`arenas.electric vehicles (evs).revenue_2022_billion_usd` (6/7, investigated
+  → 1000.0)** — this is a spelling variant of `arenas.electric vehicles`
+  (no `(evs)`, name-keyed as a separate arena). Only one run used this
+  spelling, so its own leaves are mostly null and get investigated too.
+- **`arenas.digital advertising.growth_rate_pct.high` (2/7, investigated →
+  24.0)** — genuine disagreement across runs on a number, resolved by a
+  focused follow-up call.
+- **`arenas.biopharmaceuticals.growth_rate_pct.high` (6/7, investigated →
+  not_found)** — investigation can also *confirm* that a value really isn't
+  in the document.
+
+One full run of the bundled 17-page PDF takes roughly half an hour on a single
+RTX box: N_RUNS vision extractions at limited concurrency, then one vision
+call per shaky leaf.
