@@ -1,4 +1,5 @@
 import pytest
+from pydantic import BaseModel
 
 import merge
 from merge import MergeGroup, MergeGroups
@@ -37,6 +38,25 @@ def test_flatten_empty_arenas_is_none():
     flat = merge.flatten(extraction)
     assert flat["example_arenas"] is None
     assert flat["title"] is None
+
+
+def test_flatten_generic_list_field_of_scalars_and_models():
+    class Tag(BaseModel):
+        label: str | None = None
+
+    class WithLists(BaseModel):
+        tags: list[str] = []
+        entries: list[Tag] = []
+
+    model = WithLists(tags=["b", "a", "b"], entries=[Tag(label="Y"), Tag(label="X"), Tag(label=None)])
+    flat = merge.flatten(model)
+    assert flat["tags"] == "a, b, b"
+    assert flat["entries"] == "X, Y"
+
+    empty = WithLists()
+    flat_empty = merge.flatten(empty)
+    assert flat_empty["tags"] is None
+    assert flat_empty["entries"] is None
 
 
 @pytest.mark.asyncio

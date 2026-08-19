@@ -33,12 +33,18 @@ class MergeGroups(BaseModel):
     groups: list[MergeGroup]
 
 
-def flatten(extraction: ReportExtraction) -> dict[str, str | None]:
+def _stringify_item(item) -> str:
+    if isinstance(item, BaseModel):
+        return ", ".join(str(v) for v in flatten(item).values() if v is not None)
+    return str(item)
+
+
+def flatten(extraction: BaseModel) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for name, value in extraction:
-        if name == "example_arenas":
-            names = sorted(a.name for a in value if a.name)
-            result[name] = ", ".join(names) if names else None
+        if isinstance(value, list):
+            items = sorted(s for i in value if (s := _stringify_item(i)))
+            result[name] = ", ".join(items) if items else None
         elif isinstance(value, BaseModel):
             for sub_path, sub_value in flatten(value).items():
                 result[f"{name}.{sub_path}"] = sub_value
