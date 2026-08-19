@@ -54,10 +54,12 @@ arenas.cybersecurity.growth_rate_pct.high
 ...
 ```
 
-When two runs spell the same arena differently ("electric vehicles" vs "electric
-vehicles (evs)"), each spelling becomes its own low-confidence path — which is
-the mechanism working as intended: both land under the threshold and get
-investigated.
+Before flattening, arena names are canonicalized: an LLM call clusters spelling
+variants across all runs ("electric vehicles" == "electric vehicles (evs)") so
+they land under one key instead of splintering into separate low-confidence
+paths. A one-off, non-arena key — e.g. a `TOTAL` row one run mistakes for an
+arena — has nothing to merge into, so it stays its own low-count path and gets
+investigated (and correctly comes back "not found").
 
 See [DESIGN.md](DESIGN.md) for the full design and contracts.
 
@@ -94,7 +96,10 @@ threshold, concurrency — lives in `config.py`.
 
 ## Sample output
 
-A real 7-run pass over the bundled report (18 arenas, ~145 leaf paths):
+A real 7-run pass over the bundled report (18 arenas, ~145 leaf paths), captured
+before arena-key canonicalization landed — so it still shows the raw
+spelling-variant split described above; a rerun today would fold
+`arenas.electric vehicles (evs).*` into `arenas.electric vehicles.*`:
 
 ```
 PATH                                                                           VALUE       CONFIDENCE  INVESTIGATED

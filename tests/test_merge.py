@@ -175,6 +175,78 @@ async def test_null_majority_wins_with_none_canonical(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_arena_name_variants_canonicalized(monkeypatch):
+    extractions = (
+        [
+            make_extraction(arenas=[Arena(name="electric vehicles", revenue_2022_billion_usd=5.0)])
+            for _ in range(7)
+        ]
+        + [
+            make_extraction(
+                arenas=[Arena(name="electric vehicles (evs)", revenue_2022_billion_usd=5.0)]
+            )
+            for _ in range(3)
+        ]
+    )
+
+    async def fake_structured(prompt, response_model):
+        assert response_model is merge.MergeGroups
+        return MergeGroups(
+            groups=[
+                MergeGroup(
+                    canonical_value="electric vehicles",
+                    variants=["electric vehicles", "electric vehicles (evs)"],
+                )
+            ]
+        )
+
+    monkeypatch.setattr(merge.llm, "structured", fake_structured)
+    results = await merge.merge(extractions)
+
+    path = "arenas.electric vehicles.revenue_2022_billion_usd"
+    field = next(f for f in results if f.path == path)
+    assert field.value == "5.0"
+    assert field.confidence == 10
+    assert not any(f.path.startswith("arenas.electric vehicles (evs)") for f in results)
+
+
+@pytest.mark.asyncio
+async def test_arena_name_llm_mismatch_falls_back_to_raw_keys(monkeypatch):
+    extractions = [
+        make_extraction(arenas=[Arena(name="software", revenue_2022_billion_usd=1.0)])
+        for _ in range(6)
+    ] + [
+        make_extraction(
+            arenas=[Arena(name="ai software and services", revenue_2022_billion_usd=1.0)]
+        )
+        for _ in range(4)
+    ]
+
+    async def fake_structured(prompt, response_model):
+        return MergeGroups(groups=[MergeGroup(canonical_value="software", variants=["software"])])
+
+    monkeypatch.setattr(merge.llm, "structured", fake_structured)
+    results = await merge.merge(extractions)
+
+    assert any(f.path.startswith("arenas.software.") for f in results)
+    assert any(f.path.startswith("arenas.ai software and services.") for f in results)
+
+
+@pytest.mark.asyncio
+async def test_single_arena_name_skips_llm(monkeypatch):
+    async def fake_structured(prompt, response_model):
+        raise AssertionError("llm should not be called for a single arena name")
+
+    monkeypatch.setattr(merge.llm, "structured", fake_structured)
+
+    extractions = [
+        make_extraction(arenas=[Arena(name="AI", revenue_2022_billion_usd=1.0)]) for _ in range(5)
+    ]
+    results = await merge.merge(extractions)
+    assert any(f.path.startswith("arenas.ai.") for f in results)
+
+
+@pytest.mark.asyncio
 async def test_confidence_math_split(monkeypatch):
     extractions = (
         [make_extraction(title="X") for _ in range(6)]

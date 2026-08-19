@@ -132,13 +132,21 @@ One tiny helper in `merge.py` flattens a `ReportExtraction` into `{path: value}`
 
 The `arenas` list is keyed **by normalized arena name** (strip, casefold, collapse
 whitespace), NOT by list index — different runs may order the arenas differently.
-Each arena flattens into `arenas.<normalized name>.<param>` leaves (the `name` field
+Each arena flattens into `arenas.<canonical name>.<param>` leaves (the `name` field
 itself is the key and gets no leaf). When merging N runs, the path set is the union
 across runs; a run that missed an arena contributes None for that arena's leaves.
-Runs that spell an arena differently produce separate low-count paths — which is the
-confidence mechanism working as intended: those land under the threshold and get
-investigated. This keeps nesting in the schema while the consensus logic stays a
-flat, obvious dict.
+
+Before flattening, `merge.py` canonicalizes arena keys: it collects the union of
+normalized arena names across all runs and, if there is more than one, makes **one**
+extra LLM call (`merge_prompt`, same `MergeGroups` shape used for value merging) to
+cluster spelling variants ("electric vehicles" / "electric vehicles (evs)") into a
+single canonical key before any leaf is built. If the LLM's output doesn't cover
+exactly the input names, the keys are left as-is (log a warning) — the old
+per-spelling-variant behaviour is the fallback, not a silent failure. A one-off key
+like a `TOTAL` row scraped as an "arena" is unaffected: it has no real counterpart to
+merge into, stays its own low-count key, and gets investigated and (correctly)
+resolved as not a real arena. This keeps nesting in the schema while the consensus
+logic stays a flat, obvious dict.
 
 ## llm.py — the only I/O abstraction
 
@@ -183,6 +191,9 @@ class MergedField(BaseModel):
 
 async def merge(extractions: list[ReportExtraction]) -> list[MergedField]
 ```
+
+First, canonicalize arena keys (see "Leaf paths" above): one LLM call, only if more
+than one distinct arena name exists across runs, before any flattening happens.
 
 Per leaf path:
 1. Collect the value from every run (stringified; `None` for missing).

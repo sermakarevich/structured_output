@@ -37,13 +37,16 @@ def _normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().casefold())
 
 
-def _flatten_arenas(name: str, arenas: list) -> dict[str, str | None]:
+def _flatten_arenas(
+    name: str, arenas: list, arena_key_map: dict[str, str]
+) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for arena in arenas:
         if arena.name is None:
             logger.warning("flatten %s: arena with null name skipped", name)
             continue
         key = _normalize(arena.name)
+        key = arena_key_map.get(key, key)
         for sub_path, sub_value in flatten(arena).items():
             if sub_path == "name":
                 continue
@@ -51,17 +54,49 @@ def _flatten_arenas(name: str, arenas: list) -> dict[str, str | None]:
     return result
 
 
-def flatten(extraction: BaseModel) -> dict[str, str | None]:
+def flatten(
+    extraction: BaseModel, arena_key_map: dict[str, str] | None = None
+) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for name, value in extraction:
         if name == "arenas":
-            result.update(_flatten_arenas(name, value))
+            result.update(_flatten_arenas(name, value, arena_key_map or {}))
         elif isinstance(value, BaseModel):
-            for sub_path, sub_value in flatten(value).items():
+            for sub_path, sub_value in flatten(value, arena_key_map).items():
                 result[f"{name}.{sub_path}"] = sub_value
         else:
             result[name] = str(value) if value is not None else None
     return result
+
+
+async def _canonicalize_arena_keys(extractions: list[ReportExtraction]) -> dict[str, str]:
+    by_key: dict[str, Counter] = {}
+    for extraction in extractions:
+        for arena in extraction.arenas:
+            if arena.name is None:
+                continue
+            by_key.setdefault(_normalize(arena.name), Counter())[arena.name] += 1
+
+    if len(by_key) <= 1:
+        return {}
+
+    representatives = {key: counter.most_common(1)[0][0] for key, counter in by_key.items()}
+    llm_groups = await llm.structured(
+        merge_prompt("arenas.name", sorted(representatives.values())), MergeGroups
+    )
+
+    llm_variants = {v for g in llm_groups.groups for v in g.variants}
+    if llm_variants != set(representatives.values()):
+        logger.warning("merge arenas.name: llm output mismatched variants, keeping keys as-is")
+        return {}
+
+    key_by_representative = {rep: key for key, rep in representatives.items()}
+    arena_key_map = {}
+    for llm_group in llm_groups.groups:
+        canonical_key = _normalize(llm_group.canonical_value)
+        for variant in llm_group.variants:
+            arena_key_map[key_by_representative[variant]] = canonical_key
+    return arena_key_map
 
 
 def _exact_groups(values: list[str | None]) -> list[ValueGroup]:
@@ -89,7 +124,8 @@ def _exact_groups(values: list[str | None]) -> list[ValueGroup]:
 
 
 async def merge(extractions: list[ReportExtraction]) -> list[MergedField]:
-    flattened = [flatten(e) for e in extractions]
+    arena_key_map = await _canonicalize_arena_keys(extractions)
+    flattened = [flatten(e, arena_key_map) for e in extractions]
     paths = sorted({path for f in flattened for path in f})
 
     merged_fields = []
