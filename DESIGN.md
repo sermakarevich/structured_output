@@ -13,7 +13,11 @@ This is a simplified public version of the private `ai_doc_classifier` project.
 1 PDF  +  1 nested schema
         │
         ▼
-  extract 10×          ← the same structured-output call, repeated N_RUNS times
+  render pages         ← every PDF page becomes a PNG image (charts survive!)
+        │
+        ▼
+  extract 10×          ← the same structured-output call (page images attached),
+        │                 repeated N_RUNS times against a vision model
         │
         ▼
   merge (LLM)          ← group semantically equal values ("MGI" == "McKinsey Global Institute")
@@ -35,7 +39,10 @@ This is a simplified public version of the private `ai_doc_classifier` project.
   **confidence score = number of occurrences among the 10 runs** (integer 0–10).
 - **Investigation procedure** runs for every leaf field with **confidence < 3**.
 - All tunable values live in **`config.py`** — nothing magic anywhere else.
-- Backend: **`qwen3.8:27b` served by Ollama on the RTX server**.
+- Backend: **`qwen3.8:27b` served by Ollama on the RTX server** (vision-capable).
+- **The document goes to the model as page images, not extracted text** — rendering
+  pages with pymupdf and attaching them via Ollama's `images` field preserves the
+  information in charts, tables and layout that plain text extraction loses.
 - Priorities: simplicity and readability; small, obvious abstractions; no frameworks
   (no langchain/langgraph) — just `pydantic`, `httpx`, `pymupdf`.
 
@@ -52,7 +59,7 @@ TIMEOUT_S = 240.0
 PDF_PATH = "the-next-big-arenas-of-competition-executive-summary-final.pdf"
 N_RUNS = 10                    # how many independent extraction calls
 CONFIDENCE_THRESHOLD = 3       # fields with confidence < this get investigated
-MAX_DOC_CHARS = 60_000         # truncate document text sent to the model
+RENDER_DPI = 100               # PDF page → PNG rendering resolution
 CONCURRENCY = 3                # max extraction calls in flight at once
 
 # --- output ------------------------------------------------------------
@@ -67,7 +74,7 @@ structured_output/
         config.py      # all constants (above)
         schema.py      # the ONE nested extraction schema (pydantic v2)
         llm.py         # one function: structured(prompt, response_model) -> model
-        loader.py      # one function: load_pdf(path) -> str
+        loader.py      # one function: render_pdf(path) -> list[str] (base64 PNGs)
         extract.py     # run the extraction prompt N_RUNS times
         merge.py       # LLM-assisted consensus merge + confidence counting
         investigate.py # second-look calls for low-confidence fields
@@ -122,9 +129,12 @@ nesting in the schema while the consensus logic stays a flat, obvious dict.
 ## llm.py — the only I/O abstraction
 
 ```python
-async def structured(prompt: str, response_model: type[T]) -> T:
+async def structured(prompt: str, response_model: type[T],
+                     images: list[str] | None = None) -> T:
     # POST {BASE_URL}/api/chat
-    # {"model": MODEL, "messages": [{"role": "user", "content": prompt}],
+    # message = {"role": "user", "content": prompt}
+    # if images: message["images"] = images   # base64 PNGs, one per PDF page
+    # {"model": MODEL, "messages": [message],
     #  "stream": false, "format": response_model.model_json_schema(),
     #  "options": {"temperature": TEMPERATURE}}
     # parse response["message"]["content"] with model_validate_json
@@ -137,8 +147,8 @@ through this one function.
 ## extract.py
 
 ```python
-async def extract_n_times(doc_text: str) -> list[ReportExtraction]:
-    # N_RUNS calls of structured(extraction_prompt(doc_text), ReportExtraction)
+async def extract_n_times(pages: list[str]) -> list[ReportExtraction]:
+    # N_RUNS calls of structured(extraction_prompt(), ReportExtraction, images=pages)
     # asyncio semaphore limits in-flight calls to CONCURRENCY
     # failed runs are logged and dropped; raise if ALL fail
 ```
@@ -180,11 +190,11 @@ class Investigation(BaseModel):
     reasoning: str          # short explanation, quoted evidence from the document
     resolved: bool          # True if the investigator is confident in the verdict
 
-async def investigate(doc_text: str, low_confidence: list[MergedField]) -> list[Investigation]
+async def investigate(pages: list[str], low_confidence: list[MergedField]) -> list[Investigation]
 ```
 
 For each merged field with `confidence < CONFIDENCE_THRESHOLD`: one focused LLM call
-(`investigation_prompt`) that gets the document text, the field description, and all
+(`investigation_prompt`) that gets the page images, the field path, and all
 candidate groups with their counts, and must decide the correct value citing a verbatim
 quote. Investigations run concurrently under the same semaphore.
 
@@ -196,11 +206,11 @@ the demo honest about what each stage produced.
 
 ```python
 async def run() -> Result:
-    text = load_pdf(config.PDF_PATH)
-    extractions = await extract_n_times(text)
+    pages = render_pdf(config.PDF_PATH)
+    extractions = await extract_n_times(pages)
     merged = await merge(extractions)
     shaky = [f for f in merged if f.confidence < config.CONFIDENCE_THRESHOLD]
-    investigations = await investigate(text, shaky)
+    investigations = await investigate(pages, shaky)
     return Result(document=config.PDF_PATH, n_runs=len(extractions),
                   fields=merged, investigations=investigations)
 ```
@@ -211,7 +221,8 @@ Prints a human-friendly table (path, value, confidence, investigated?) and write
 ## Testing
 
 - Mock `llm.structured` (monkeypatch) — unit tests never touch the network.
-- `test_loader.py` — real PDF, pure local: text is non-empty, contains "arenas".
+- `test_loader.py` — real PDF, pure local: one base64 PNG per page, each decodes
+  and starts with the PNG magic bytes.
 - `test_extract.py` — N runs happen, partial failures tolerated, all-fail raises.
 - `test_merge.py` — flattening of nested model; exact grouping; LLM-merge path with a
   scripted response; fallback when the LLM mangles variants; null-majority; confidence math.
