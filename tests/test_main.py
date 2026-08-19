@@ -2,10 +2,10 @@ import json
 
 import pytest
 
-import main
-from investigate import Investigation
-from merge import MergedField, ValueGroup
-from schema import ReportExtraction
+from so import main
+from so.investigate import Investigation
+from so.merge import MergedField, ValueGroup
+from so.schema import ReportExtraction
 
 
 def _field(path: str, confidence: int) -> MergedField:

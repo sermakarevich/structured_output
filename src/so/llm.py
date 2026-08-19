@@ -5,7 +5,7 @@ from typing import TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 
-import config
+from so import config
 
 logger = logging.getLogger(__name__)
 

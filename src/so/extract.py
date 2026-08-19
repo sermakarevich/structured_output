@@ -1,10 +1,10 @@
 import asyncio
 import logging
 
-import config
-import llm
-from prompts import extraction_prompt
-from schema import ReportExtraction
+from so import config
+from so import llm
+from so.prompts import extraction_prompt
+from so.schema import ReportExtraction
 
 logger = logging.getLogger(__name__)
 

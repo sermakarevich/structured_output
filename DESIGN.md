@@ -59,26 +59,30 @@ CONCURRENCY = 3                # max extraction calls in flight at once
 RESULT_PATH = "result.json"
 ```
 
-## Repo layout — flat, readable top-to-bottom
+## Repo layout — one small package, readable top-to-bottom
 
 ```
 structured_output/
-    config.py          # all constants (above)
-    schema.py          # the ONE nested extraction schema (pydantic v2)
-    llm.py             # one function: structured(prompt, response_model) -> model
-    loader.py          # one function: load_pdf(path) -> str
-    extract.py         # run the extraction prompt N_RUNS times
-    merge.py           # LLM-assisted consensus merge + confidence counting
-    investigate.py     # second-look calls for low-confidence fields
-    main.py            # pipeline: load → extract → merge → investigate → save/print
-    prompts.py         # the three prompt templates as plain string functions
+    src/so/
+        config.py      # all constants (above)
+        schema.py      # the ONE nested extraction schema (pydantic v2)
+        llm.py         # one function: structured(prompt, response_model) -> model
+        loader.py      # one function: load_pdf(path) -> str
+        extract.py     # run the extraction prompt N_RUNS times
+        merge.py       # LLM-assisted consensus merge + confidence counting
+        investigate.py # second-look calls for low-confidence fields
+        main.py        # pipeline: load → extract → merge → investigate → save/print
+        prompts.py     # the three prompt templates as plain string functions
+        __main__.py    # python -m so → main.main()
     tests/             # pytest; mocked LLM, no network needed
-    pyproject.toml     # uv / PEP 621; deps: pydantic>=2, httpx, pymupdf
+    pyproject.toml     # uv / PEP 621 / hatchling; deps: pydantic>=2, httpx, pymupdf
+    justfile           # just run / just test / just integration
     the-next-big-arenas-...-final.pdf
     README.md
 ```
 
-No `src/` package, no CLI framework — `uv run python main.py` is the whole interface.
+Flat modules inside the `so` package, no CLI framework — `uv run so`
+(console script `so = "so.main:main"`, or `just run`) is the whole interface.
 
 ## schema.py — the nested schema
 

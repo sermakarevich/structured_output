@@ -3,10 +3,10 @@ import logging
 
 from pydantic import BaseModel
 
-import config
-import llm
-import prompts
-from merge import MergedField
+from so import config
+from so import llm
+from so import prompts
+from so.merge import MergedField
 
 logger = logging.getLogger(__name__)
 

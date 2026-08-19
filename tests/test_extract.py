@@ -2,10 +2,10 @@ import asyncio
 
 import pytest
 
-import config
-import extract
-import llm
-from schema import ReportExtraction
+from so import config
+from so import extract
+from so import llm
+from so.schema import ReportExtraction
 
 
 @pytest.mark.asyncio

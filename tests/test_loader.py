@@ -1,5 +1,5 @@
-import config
-from loader import load_pdf
+from so import config
+from so.loader import load_pdf
 
 
 def test_load_pdf():

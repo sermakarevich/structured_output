@@ -1,4 +1,4 @@
-from schema import ReportExtraction
+from so.schema import ReportExtraction
 
 
 def test_empty_construct():

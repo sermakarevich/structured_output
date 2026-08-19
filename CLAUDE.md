@@ -6,9 +6,10 @@ contracts, file layout, and the fleet task breakdown.
 
 ## Project goals
 
-- Simplicity and readability above everything: flat modules, small obvious
-  abstractions, no frameworks (no langchain/langgraph).
-- All tunable values live in `config.py` only.
+- Simplicity and readability above everything: flat modules inside one small
+  package (`src/so/`), small obvious abstractions, no frameworks (no
+  langchain/langgraph).
+- All tunable values live in `src/so/config.py` only.
 - Backend: `qwen3.8:27b` via Ollama on the RTX server (`http://127.0.0.1:11435`).
 
 ## Instructions
@@ -31,6 +32,6 @@ contracts, file layout, and the fleet task breakdown.
 
 ## Commands
 
-- run the demo: `uv run python main.py`
-- run tests: `uv run pytest -m "not integration"`
-- integration test (needs RTX server): `RUN_INTEGRATION=1 uv run pytest -m integration`
+- run the demo: `just run` (= `uv run so`)
+- run tests: `just test` (= `uv run pytest -q -m "not integration"`)
+- integration test (needs RTX server): `just integration`

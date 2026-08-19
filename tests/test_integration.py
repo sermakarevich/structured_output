@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-import config
-import main
+from so import config
+from so import main
 
 LEAF_PATHS = {
     "title",

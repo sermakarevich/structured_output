@@ -2,10 +2,10 @@ import asyncio
 
 import pytest
 
-import investigate
-import llm
-from investigate import Investigation
-from merge import MergedField, ValueGroup
+from so import investigate
+from so import llm
+from so.investigate import Investigation
+from so.merge import MergedField, ValueGroup
 
 
 def _field(path: str, confidence: int) -> MergedField:

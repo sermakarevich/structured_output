@@ -2,8 +2,8 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-import config
-import llm
+from so import config
+from so import llm
 
 
 class Item(BaseModel):

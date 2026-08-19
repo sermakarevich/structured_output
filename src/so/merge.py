@@ -4,9 +4,9 @@ from collections import Counter
 
 from pydantic import BaseModel
 
-import llm
-from prompts import merge_prompt
-from schema import ReportExtraction
+from so import llm
+from so.prompts import merge_prompt
+from so.schema import ReportExtraction
 
 logger = logging.getLogger(__name__)
 

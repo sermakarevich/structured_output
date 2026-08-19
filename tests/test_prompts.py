@@ -1,4 +1,4 @@
-from prompts import extraction_prompt, investigation_prompt, merge_prompt
+from so.prompts import extraction_prompt, investigation_prompt, merge_prompt
 
 
 def test_extraction_prompt():

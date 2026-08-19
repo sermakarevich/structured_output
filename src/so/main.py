@@ -3,11 +3,11 @@ import logging
 
 from pydantic import BaseModel
 
-import config
-from extract import extract_n_times
-from investigate import Investigation, investigate
-from loader import load_pdf
-from merge import MergedField, merge
+from so import config
+from so.extract import extract_n_times
+from so.investigate import Investigation, investigate
+from so.loader import load_pdf
+from so.merge import MergedField, merge
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def _print_table(result: Result) -> None:
         )
 
 
-if __name__ == "__main__":
+def main() -> None:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
@@ -55,3 +55,7 @@ if __name__ == "__main__":
         f.write(result.model_dump_json(indent=2))
     _print_table(result)
     print(f"full result written to {config.RESULT_PATH}")
+
+
+if __name__ == "__main__":
+    main()

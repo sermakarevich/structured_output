@@ -2,7 +2,7 @@ import logging
 
 import pymupdf
 
-import config
+from so import config
 
 logger = logging.getLogger(__name__)
 

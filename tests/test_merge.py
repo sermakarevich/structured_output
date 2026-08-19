@@ -1,9 +1,9 @@
 import pytest
 from pydantic import BaseModel
 
-import merge
-from merge import MergeGroup, MergeGroups
-from schema import Arena, Publisher, ReportExtraction, RevenueProjection
+from so import merge
+from so.merge import MergeGroup, MergeGroups
+from so.schema import Arena, Publisher, ReportExtraction, RevenueProjection
 
 
 def make_extraction(**kwargs):

@@ -34,11 +34,11 @@ See [DESIGN.md](DESIGN.md) for the full design and contracts.
 ## Running it
 
 You need [uv](https://docs.astral.sh/uv/) and an [Ollama](https://ollama.com/)
-server running the model configured in `config.py` (`qwen3.8:27b` by default).
+server running the model configured in `src/so/config.py` (`qwen3.8:27b` by default).
 
 ```bash
 uv sync
-uv run python main.py
+uv run so        # or: just run
 ```
 
 This extracts data from the bundled PDF ten times, merges the results, prints
