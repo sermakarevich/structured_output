@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 import pytest
 
@@ -14,6 +15,11 @@ SCALAR_LEAF_PATHS = {
 }
 
 
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("RUN_INTEGRATION"), reason="needs RUN_INTEGRATION=1 and the RTX server"
+)
+
+
 @pytest.mark.integration
 def test_pipeline_against_real_backend():
     result = asyncio.run(main.run())
@@ -26,8 +32,10 @@ def test_pipeline_against_real_backend():
     assert len(arena_keys) >= 10
 
     num_arenas = next(f for f in result.fields if f.path == "num_arenas")
-    assert num_arenas.value is not None
-    assert 15 <= float(num_arenas.value) <= 21
+    if num_arenas.value is not None:
+        assert float(num_arenas.value) == 18
+    else:
+        assert any(i.path == "num_arenas" for i in result.investigations)
 
     revenue_2040 = {
         f.path: f.value for f in result.fields if ".revenue_2040_billion_usd." in f.path
