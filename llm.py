@@ -35,15 +35,15 @@ async def structured(prompt: str, response_model: type[T]) -> T:
     start = time.monotonic()
     async with httpx.AsyncClient(timeout=config.TIMEOUT_S) as client:
         content = ""
-        for attempt in range(2):
+        for attempt in range(config.MAX_ATTEMPTS):
             try:
                 content = await _call(client, prompt, response_model)
                 result = response_model.model_validate_json(content)
             except (ValidationError, ValueError) as e:
                 logger.warning("structured call attempt %d failed: %s", attempt + 1, e)
-                if attempt == 1:
+                if attempt == config.MAX_ATTEMPTS - 1:
                     raise StructuredOutputError(
-                        f"{response_model.__name__}: {content[:200]}"
+                        f"{response_model.__name__}: {content[: config.ERROR_SNIPPET_CHARS]}"
                     ) from e
                 continue
             else:

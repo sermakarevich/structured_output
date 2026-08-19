@@ -2,6 +2,7 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
+import config
 import llm
 
 
@@ -57,7 +58,7 @@ async def test_retry_then_succeed(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_fails_twice_raises(monkeypatch):
-    handler, calls = make_handler(["not json", "still not json"])
+    handler, calls = make_handler(["not json"] * config.MAX_ATTEMPTS)
 
     orig_init = httpx.AsyncClient.__init__
 
@@ -69,7 +70,7 @@ async def test_fails_twice_raises(monkeypatch):
 
     with pytest.raises(llm.StructuredOutputError):
         await llm.structured("prompt", Item)
-    assert len(calls) == 2
+    assert len(calls) == config.MAX_ATTEMPTS
 
 
 @pytest.mark.asyncio
