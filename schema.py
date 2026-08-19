@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 
 
 class Publisher(BaseModel):
-    name: str | None = Field(None, description="Organization that published the report")
-    business_unit: str | None = Field(None, description="Research arm or institute within the organization")
+    name: str | None = Field(None, description="Top-level parent company or organization (e.g. the firm, not its research institute)")
+    business_unit: str | None = Field(None, description="Named institute, research arm, or division inside that parent organization, if any")
 
 
 class RevenueProjection(BaseModel):

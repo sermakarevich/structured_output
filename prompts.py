@@ -3,6 +3,8 @@ def extraction_prompt(doc_text: str) -> str:
         "Read the document below and fill every field of the JSON schema. "
         "Use null when the document does not state a value. "
         "Numbers must be given as numbers, and dates written exactly as they appear in the document. "
+        "For nested organization fields, the parent company goes in the outer `name` field and any "
+        "named sub-unit (institute, research arm, division) goes in `business_unit`. "
         "Respond with JSON only.\n\n"
         f"DOCUMENT:\n{doc_text}"
     )
