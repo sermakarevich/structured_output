@@ -35,7 +35,7 @@ This is a simplified public version of the private `ai_doc_classifier` project.
   **confidence score = number of occurrences among the 10 runs** (integer 0–10).
 - **Investigation procedure** runs for every leaf field with **confidence < 3**.
 - All tunable values live in **`config.py`** — nothing magic anywhere else.
-- Backend: **`qwen3.8:37b` served by Ollama on the RTX server**.
+- Backend: **`qwen3.8:27b` served by Ollama on the RTX server**.
 - Priorities: simplicity and readability; small, obvious abstractions; no frameworks
   (no langchain/langgraph) — just `pydantic`, `httpx`, `pymupdf`.
 
@@ -44,7 +44,7 @@ This is a simplified public version of the private `ai_doc_classifier` project.
 ```python
 # --- backend -----------------------------------------------------------
 BASE_URL = "http://127.0.0.1:11435"   # Ollama on the RTX server (via tunnel)
-MODEL = "qwen3.8:37b"
+MODEL = "qwen3.8:27b"
 TEMPERATURE = 0.2
 TIMEOUT_S = 240.0
 

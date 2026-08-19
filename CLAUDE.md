@@ -9,7 +9,7 @@ contracts, file layout, and the fleet task breakdown.
 - Simplicity and readability above everything: flat modules, small obvious
   abstractions, no frameworks (no langchain/langgraph).
 - All tunable values live in `config.py` only.
-- Backend: `qwen3.8:37b` via Ollama on the RTX server (`http://127.0.0.1:11435`).
+- Backend: `qwen3.8:27b` via Ollama on the RTX server (`http://127.0.0.1:11435`).
 
 ## Instructions
 

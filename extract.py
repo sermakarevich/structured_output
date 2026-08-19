@@ -16,12 +16,12 @@ async def extract_n_times(doc_text: str) -> list[ReportExtraction]:
     prompt = extraction_prompt(doc_text)
     semaphore = asyncio.Semaphore(config.CONCURRENCY)
 
-    async def run(i: int) -> ReportExtraction:
+    async def run() -> ReportExtraction:
         async with semaphore:
             return await llm.structured(prompt, ReportExtraction)
 
     results = await asyncio.gather(
-        *(run(i) for i in range(config.N_RUNS)), return_exceptions=True
+        *(run() for _ in range(config.N_RUNS)), return_exceptions=True
     )
 
     successes = []

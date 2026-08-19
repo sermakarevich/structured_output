@@ -21,9 +21,6 @@ def _field(path: str, confidence: int) -> MergedField:
 async def test_run_wires_stages_and_filters_by_threshold(monkeypatch):
     fields = [_field("title", 5), _field("publisher.name", 1)]
 
-    async def fake_load_pdf(path):
-        return "doc text"
-
     async def fake_extract_n_times(text):
         assert text == "doc text"
         return [ReportExtraction(), ReportExtraction()]

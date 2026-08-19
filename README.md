@@ -34,7 +34,7 @@ See [DESIGN.md](DESIGN.md) for the full design and contracts.
 ## Running it
 
 You need [uv](https://docs.astral.sh/uv/) and an [Ollama](https://ollama.com/)
-server running the model configured in `config.py` (`qwen3.8:37b` by default).
+server running the model configured in `config.py` (`qwen3.8:27b` by default).
 
 ```bash
 uv sync

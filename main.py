@@ -35,14 +35,14 @@ async def run() -> Result:
 
 def _print_table(result: Result) -> None:
     verdicts = {i.path: i.verdict or "-" for i in result.investigations}
-    header = f"{'PATH'.ljust(30)}{'VALUE'.ljust(42)}{'CONFIDENCE'.ljust(12)}INVESTIGATED"
-    print(header)
+    path_width = max([len(f.path) for f in result.fields] + [len("PATH")]) + 2
+    print(f"{'PATH'.ljust(path_width)}{'VALUE'.ljust(42)}{'CONFIDENCE'.ljust(12)}INVESTIGATED")
     for field in result.fields:
         value = (field.value or "")[:40]
         confidence = f"{field.confidence}/{result.n_runs}"
         investigated = verdicts.get(field.path, "-")
         print(
-            f"{field.path.ljust(30)}{value.ljust(42)}{confidence.ljust(12)}{investigated}"
+            f"{field.path.ljust(path_width)}{value.ljust(42)}{confidence.ljust(12)}{investigated}"
         )
 
 
@@ -54,4 +54,4 @@ if __name__ == "__main__":
     with open(config.RESULT_PATH, "w") as f:
         f.write(result.model_dump_json(indent=2))
     _print_table(result)
-    print("full result written to result.json")
+    print(f"full result written to {config.RESULT_PATH}")
