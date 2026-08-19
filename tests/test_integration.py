@@ -20,8 +20,24 @@ def test_pipeline_against_real_backend():
 
     paths = {f.path for f in result.fields}
     assert SCALAR_LEAF_PATHS <= paths
-    assert any(p.startswith("arenas.") for p in paths)
     assert result.n_runs >= 8
+
+    arena_keys = {p.split(".")[1] for p in paths if p.startswith("arenas.")}
+    assert len(arena_keys) >= 10
+
+    num_arenas = next(f for f in result.fields if f.path == "num_arenas")
+    assert num_arenas.value is not None
+    assert 15 <= float(num_arenas.value) <= 21
+
+    revenue_2040 = {
+        f.path: f.value for f in result.fields if ".revenue_2040_billion_usd." in f.path
+    }
+    assert any(
+        revenue_2040.get(f"arenas.{key}.revenue_2040_billion_usd.low") is not None
+        and revenue_2040.get(f"arenas.{key}.revenue_2040_billion_usd.high") is not None
+        for key in arena_keys
+    )
+
     title = next(f for f in result.fields if f.path == "title")
     assert title.confidence >= 6
     for field in result.fields:
