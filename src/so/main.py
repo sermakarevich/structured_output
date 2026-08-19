@@ -19,11 +19,17 @@ class Result(BaseModel):
     investigations: list[Investigation]
 
 
+def _needs_investigation(field: MergedField) -> bool:
+    if field.value is None and any(c.canonical_value is not None for c in field.candidates):
+        return True
+    return field.confidence < config.CONFIDENCE_THRESHOLD
+
+
 async def run() -> Result:
     pages = render_pdf(config.PDF_PATH)
     extractions = await extract_n_times(pages)
     merged = await merge(extractions)
-    shaky = [f for f in merged if f.confidence < config.CONFIDENCE_THRESHOLD]
+    shaky = [f for f in merged if _needs_investigation(f)]
     investigations = await investigate(pages, shaky)
     return Result(
         document=config.PDF_PATH,
