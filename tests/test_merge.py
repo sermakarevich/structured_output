@@ -69,25 +69,6 @@ def test_flatten_null_name_arena_skipped(caplog):
     assert len([k for k in flat if k.startswith("arenas.")]) == 5
 
 
-def test_flatten_generic_list_field_of_scalars_and_models():
-    class Tag(BaseModel):
-        label: str | None = None
-
-    class WithLists(BaseModel):
-        tags: list[str] = []
-        entries: list[Tag] = []
-
-    model = WithLists(tags=["b", "a", "b"], entries=[Tag(label="Y"), Tag(label="X"), Tag(label=None)])
-    flat = merge.flatten(model)
-    assert flat["tags"] == "a, b, b"
-    assert flat["entries"] == "X, Y"
-
-    empty = WithLists()
-    flat_empty = merge.flatten(empty)
-    assert flat_empty["tags"] is None
-    assert flat_empty["entries"] is None
-
-
 @pytest.mark.asyncio
 async def test_union_path_missing_arena_counts_as_none(monkeypatch):
     async def fake_structured(prompt, response_model):

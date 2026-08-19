@@ -33,12 +33,6 @@ class MergeGroups(BaseModel):
     groups: list[MergeGroup]
 
 
-def _stringify_item(item) -> str:
-    if isinstance(item, BaseModel):
-        return ", ".join(str(v) for v in flatten(item).values() if v is not None)
-    return str(item)
-
-
 def _normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().casefold())
 
@@ -62,9 +56,6 @@ def flatten(extraction: BaseModel) -> dict[str, str | None]:
     for name, value in extraction:
         if name == "arenas":
             result.update(_flatten_arenas(name, value))
-        elif isinstance(value, list):
-            items = sorted(s for i in value if (s := _stringify_item(i)))
-            result[name] = ", ".join(items) if items else None
         elif isinstance(value, BaseModel):
             for sub_path, sub_value in flatten(value).items():
                 result[f"{name}.{sub_path}"] = sub_value
