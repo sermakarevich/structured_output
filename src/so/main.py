@@ -4,10 +4,10 @@ import logging
 from pydantic import BaseModel
 
 from so import config
-from so.extract import extract_n_times
-from so.investigate import Investigation, investigate
-from so.loader import render_pdf
-from so.merge import MergedField, merge
+from so.ai.extract import extract_n_times
+from so.ai.investigate import Investigation, investigate
+from so.ai.merge import MergedField, merge
+from so.data.loader import render_pdf
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@ import logging
 from pydantic import BaseModel
 
 from so import config
-from so import llm
 from so import prompts
-from so.merge import MergedField
+from so.ai import llm
+from so.ai.merge import MergedField
 
 logger = logging.getLogger(__name__)
 

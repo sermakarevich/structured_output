@@ -33,7 +33,7 @@ This is a simplified public version of the private `ai_doc_classifier` project.
 
 - **One PDF document**: `the-next-big-arenas-of-competition-executive-summary-final.pdf`
   (public McKinsey report, copied into the repo root).
-- **One structured output schema with nested fields** (see `schema.py`).
+- **One structured output schema with nested fields** (see `schemas/arena_report.py`).
 - Extraction runs **10 times** against the same document.
 - **Merge procedure uses an LLM** to group semantically equivalent values;
   **confidence score = number of occurrences among the 10 runs** (integer 0–10).
@@ -61,6 +61,8 @@ N_RUNS = 10                    # how many independent extraction calls
 CONFIDENCE_THRESHOLD = 3       # fields with confidence < this get investigated
 RENDER_DPI = 100               # PDF page → PNG rendering resolution
 CONCURRENCY = 3                # max extraction calls in flight at once
+SCHEMA_NAME = "arena_report"   # selects so.schemas.<SCHEMA_NAME>
+PROMPT_VERSION = "v1"          # selects so/prompts/<PROMPT_VERSION>/*.txt
 
 # --- output ------------------------------------------------------------
 RESULT_PATH = "result.json"
@@ -71,17 +73,25 @@ RESULT_PATH = "result.json"
 ```
 structured_output/
     src/so/
-        config.py      # all constants (above), incl. SCHEMA_NAME
+        config.py      # all constants (above)
         schemas/
             __init__.py       # load_schema() dynamically imports so.schemas.<SCHEMA_NAME>
             arena_report.py   # the ONE nested extraction schema (pydantic v2)
-        llm.py         # one function: structured(prompt, response_model) -> model
-        loader.py      # one function: render_pdf(path) -> list[str] (base64 PNGs)
-        extract.py     # run the extraction prompt N_RUNS times
-        merge.py       # LLM-assisted consensus merge + confidence counting
-        investigate.py # second-look calls for low-confidence fields
+        prompts/
+            __init__.py       # extraction_prompt/merge_prompt/investigation_prompt,
+                               # read the versioned .txt files below, config.PROMPT_VERSION
+            v1/
+                extraction.txt
+                merge.txt
+                investigation.txt
+        ai/
+            llm.py         # one function: structured(prompt, response_model) -> model
+            extract.py     # run the extraction prompt N_RUNS times
+            merge.py       # LLM-assisted consensus merge + confidence counting
+            investigate.py # second-look calls for low-confidence fields
+        data/
+            loader.py      # one function: render_pdf(path) -> list[str] (base64 PNGs)
         main.py        # pipeline: load → extract → merge → investigate → save/print
-        prompts.py     # the three prompt templates as plain string functions
         __main__.py    # python -m so → main.main()
     tests/             # pytest; mocked LLM, no network needed
     pyproject.toml     # uv / PEP 621 / hatchling; deps: pydantic>=2, httpx, pymupdf
@@ -90,7 +100,9 @@ structured_output/
     README.md
 ```
 
-Flat modules inside the `so` package, no CLI framework — `uv run so`
+Modules are grouped by role — `ai/` (LLM calls), `data/` (local IO), `schemas/`
+and `prompts/` (swappable, versioned inputs to the LLM calls) — but the package
+stays flat within each folder and there's still no CLI framework: `uv run so`
 (console script `so = "so.main:main"`, or `just run`) is the whole interface.
 
 ## schemas/ — the nested schema
@@ -157,7 +169,7 @@ merge into, stays its own low-count key, and gets investigated and (correctly)
 resolved as not a real arena. This keeps nesting in the schema while the consensus
 logic stays a flat, obvious dict.
 
-## llm.py — the only I/O abstraction
+## ai/llm.py — the only I/O abstraction
 
 ```python
 async def structured(prompt: str, response_model: type[T],
@@ -175,7 +187,7 @@ async def structured(prompt: str, response_model: type[T],
 That's the entire backend surface. Extraction, merge and investigation all go
 through this one function.
 
-## extract.py
+## ai/extract.py
 
 ```python
 async def extract_n_times(pages: list[str]) -> list[ReportExtraction]:
@@ -184,7 +196,7 @@ async def extract_n_times(pages: list[str]) -> list[ReportExtraction]:
     # failed runs are logged and dropped; raise if ALL fail
 ```
 
-## merge.py — consensus + confidence
+## ai/merge.py — consensus + confidence
 
 ```python
 class ValueGroup(BaseModel):
@@ -215,7 +227,7 @@ Per leaf path:
 5. Winner = group with the highest count; `confidence = winner.count`.
    Nulls form their own group and can win (meaning: "the field is genuinely absent").
 
-## investigate.py — second look at shaky fields
+## ai/investigate.py — second look at shaky fields
 
 ```python
 class Investigation(BaseModel):

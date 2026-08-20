@@ -2,10 +2,10 @@ import asyncio
 
 import pytest
 
-from so import investigate
-from so import llm
-from so.investigate import Investigation
-from so.merge import MergedField, ValueGroup
+from so.ai import investigate
+from so.ai import llm
+from so.ai.investigate import Investigation
+from so.ai.merge import MergedField, ValueGroup
 
 PAGES = ["img1", "img2"]
 

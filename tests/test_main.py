@@ -3,8 +3,8 @@ import json
 import pytest
 
 from so import main
-from so.investigate import Investigation
-from so.merge import MergedField, ValueGroup
+from so.ai.investigate import Investigation
+from so.ai.merge import MergedField, ValueGroup
 from so.schemas.arena_report import ReportExtraction
 
 PAGES = ["img1", "img2"]

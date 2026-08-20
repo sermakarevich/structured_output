@@ -3,7 +3,7 @@ import pytest
 from pydantic import BaseModel
 
 from so import config
-from so import llm
+from so.ai import llm
 
 
 class Item(BaseModel):

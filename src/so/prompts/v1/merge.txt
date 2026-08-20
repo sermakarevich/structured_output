@@ -1,0 +1,4 @@
+The strings below are candidate values for the field `{path}`, produced by independent extraction runs over the same document. Group semantically equivalent values together, for example "MGI" == "McKinsey Global Institute" and "$29 trillion to $48 trillion" == "29-48 trillion USD". For each group, pick the most complete variant as the canonical_value. Every input variant must appear in exactly one group.
+
+VARIANTS:
+{listed}

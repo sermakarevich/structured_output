@@ -3,8 +3,8 @@ import asyncio
 import pytest
 
 from so import config
-from so import extract
-from so import llm
+from so.ai import extract
+from so.ai import llm
 from so.schemas.arena_report import ReportExtraction
 
 PAGES = ["img1", "img2"]

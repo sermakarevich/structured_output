@@ -1,8 +1,8 @@
 import pytest
 from pydantic import BaseModel
 
-from so import merge
-from so.merge import MergeGroup, MergeGroups
+from so.ai import merge
+from so.ai.merge import MergeGroup, MergeGroups
 from so.schemas.arena_report import Arena, Publisher, ReportExtraction
 
 

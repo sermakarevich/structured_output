@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from so import config
-from so import llm
+from so.ai import llm
 from so.prompts import extraction_prompt
 from so.schemas import load_schema
 

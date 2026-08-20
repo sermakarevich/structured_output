@@ -3,7 +3,7 @@ import base64
 import pymupdf
 
 from so import config
-from so.loader import render_pdf
+from so.data.loader import render_pdf
 
 
 def test_render_pdf_page_count():

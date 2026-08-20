@@ -4,7 +4,7 @@ from collections import Counter
 
 from pydantic import BaseModel
 
-from so import llm
+from so.ai import llm
 from so.prompts import merge_prompt
 from so.schemas import load_schema
 
