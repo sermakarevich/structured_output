@@ -6,9 +6,10 @@ from pydantic import BaseModel
 
 from so import llm
 from so.prompts import merge_prompt
-from so.schema import ReportExtraction
+from so.schemas import load_schema
 
 logger = logging.getLogger(__name__)
+ReportExtraction = load_schema().ReportExtraction
 
 
 class ValueGroup(BaseModel):

@@ -5,7 +5,7 @@ import pytest
 from so import main
 from so.investigate import Investigation
 from so.merge import MergedField, ValueGroup
-from so.schema import ReportExtraction
+from so.schemas.arena_report import ReportExtraction
 
 PAGES = ["img1", "img2"]
 

@@ -4,9 +4,10 @@ import logging
 from so import config
 from so import llm
 from so.prompts import extraction_prompt
-from so.schema import ReportExtraction
+from so.schemas import load_schema
 
 logger = logging.getLogger(__name__)
+ReportExtraction = load_schema().ReportExtraction
 
 
 class AllRunsFailedError(Exception): ...

@@ -1,4 +1,4 @@
-from so.schema import ReportExtraction
+from so.schemas.arena_report import ReportExtraction
 
 
 def test_empty_construct():

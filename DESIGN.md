@@ -72,9 +72,9 @@ RESULT_PATH = "result.json"
 structured_output/
     src/so/
         config.py      # all constants (above), incl. SCHEMA_NAME
-        schema.py      # dynamically imports so.schemas.<SCHEMA_NAME>, re-exports its models
         schemas/
-            arena_report.py  # the ONE nested extraction schema (pydantic v2)
+            __init__.py       # load_schema() dynamically imports so.schemas.<SCHEMA_NAME>
+            arena_report.py   # the ONE nested extraction schema (pydantic v2)
         llm.py         # one function: structured(prompt, response_model) -> model
         loader.py      # one function: render_pdf(path) -> list[str] (base64 PNGs)
         extract.py     # run the extraction prompt N_RUNS times
@@ -93,13 +93,13 @@ structured_output/
 Flat modules inside the `so` package, no CLI framework — `uv run so`
 (console script `so = "so.main:main"`, or `just run`) is the whole interface.
 
-## schema.py — the nested schema
+## schemas/ — the nested schema
 
 Schemas live in `src/so/schemas/`, one module each. `config.SCHEMA_NAME` names
-which module is active; `schema.py` dynamically imports `so.schemas.<SCHEMA_NAME>`
-and re-exports its models (`ReportExtraction`, `Arena`, ...) via module
-`__getattr__`, so every other module keeps doing `from so.schema import
-ReportExtraction` regardless of which schema module is selected.
+which module is active; `schemas/load_schema()` dynamically imports
+`so.schemas.<SCHEMA_NAME>` and returns it, so `extract.py`/`merge.py` do
+`ReportExtraction = load_schema().ReportExtraction` at import time instead of
+hardcoding a schema module.
 
 The active schema (`schemas/arena_report.py`) is one pydantic model tree; nesting
 is the point of the demo. Every leaf carries a `Field(description=...)` —

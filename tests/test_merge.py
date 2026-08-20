@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from so import merge
 from so.merge import MergeGroup, MergeGroups
-from so.schema import Arena, Publisher, ReportExtraction
+from so.schemas.arena_report import Arena, Publisher, ReportExtraction
 
 
 def make_extraction(**kwargs):
