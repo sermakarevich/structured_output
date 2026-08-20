@@ -71,8 +71,10 @@ RESULT_PATH = "result.json"
 ```
 structured_output/
     src/so/
-        config.py      # all constants (above)
-        schema.py      # the ONE nested extraction schema (pydantic v2)
+        config.py      # all constants (above), incl. SCHEMA_NAME
+        schema.py      # dynamically imports so.schemas.<SCHEMA_NAME>, re-exports its models
+        schemas/
+            arena_report.py  # the ONE nested extraction schema (pydantic v2)
         llm.py         # one function: structured(prompt, response_model) -> model
         loader.py      # one function: render_pdf(path) -> list[str] (base64 PNGs)
         extract.py     # run the extraction prompt N_RUNS times
@@ -93,8 +95,15 @@ Flat modules inside the `so` package, no CLI framework — `uv run so`
 
 ## schema.py — the nested schema
 
-One pydantic model tree; nesting is the point of the demo. Every leaf carries a
-`Field(description=...)` — descriptions are what the model extracts against.
+Schemas live in `src/so/schemas/`, one module each. `config.SCHEMA_NAME` names
+which module is active; `schema.py` dynamically imports `so.schemas.<SCHEMA_NAME>`
+and re-exports its models (`ReportExtraction`, `Arena`, ...) via module
+`__getattr__`, so every other module keeps doing `from so.schema import
+ReportExtraction` regardless of which schema module is selected.
+
+The active schema (`schemas/arena_report.py`) is one pydantic model tree; nesting
+is the point of the demo. Every leaf carries a `Field(description=...)` —
+descriptions are what the model extracts against.
 
 The schema focuses on the report's core payload: **the full table of future arenas
 with all their per-arena parameters** (2022 revenue, projected 2040 revenue range,

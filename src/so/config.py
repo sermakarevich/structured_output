@@ -5,6 +5,7 @@ TIMEOUT_S = 240.0
 MAX_ATTEMPTS = 2
 ERROR_SNIPPET_CHARS = 200
 
+SCHEMA_NAME = "arena_report"
 PDF_PATH = "the-next-big-arenas-of-competition-executive-summary-final.pdf"
 N_RUNS = 10
 CONFIDENCE_THRESHOLD = 3
