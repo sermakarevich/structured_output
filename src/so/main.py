@@ -42,13 +42,14 @@ async def run() -> Result:
 def _print_table(result: Result) -> None:
     verdicts = {i.path: i.verdict or "-" for i in result.investigations}
     path_width = max([len(f.path) for f in result.fields] + [len("PATH")]) + 2
-    print(f"{'PATH'.ljust(path_width)}{'VALUE'.ljust(42)}{'CONFIDENCE'.ljust(12)}INVESTIGATED")
+    print(f"{'PATH'.ljust(path_width)}{'VALUE'.ljust(42)}{'CONFIDENCE'.ljust(14)}INVESTIGATED")
     for field in result.fields:
         value = (field.value or "")[:40]
-        confidence = f"{field.confidence}/{result.n_runs}"
+        runs = round(field.confidence * result.n_runs)
+        confidence = f"{field.confidence:.2f} ({runs}/{result.n_runs})"
         investigated = verdicts.get(field.path, "-")
         print(
-            f"{field.path.ljust(path_width)}{value.ljust(42)}{confidence.ljust(12)}{investigated}"
+            f"{field.path.ljust(path_width)}{value.ljust(42)}{confidence.ljust(14)}{investigated}"
         )
 
 

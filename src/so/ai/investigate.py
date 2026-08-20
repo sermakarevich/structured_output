@@ -26,8 +26,8 @@ async def investigate(pages: list[str], low_confidence: list[MergedField]) -> li
 
     async def run(field: MergedField) -> Investigation:
         async with semaphore:
-            logger.info("investigating %s (confidence %d)", field.path, field.confidence)
-            candidates = [(g.canonical_value, g.count) for g in field.candidates]
+            logger.info("investigating %s (confidence %.2f)", field.path, field.confidence)
+            candidates = [(g.canonical_value, g.confidence) for g in field.candidates]
             result = await llm.structured(
                 prompts.investigation_prompt(field.path, candidates), Investigation, images=pages
             )

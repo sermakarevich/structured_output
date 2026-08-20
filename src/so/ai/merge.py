@@ -14,14 +14,14 @@ ReportExtraction = load_schema().ReportExtraction
 
 class ValueGroup(BaseModel):
     canonical_value: str | None
-    count: int
+    confidence: float
     variants: list[str]
 
 
 class MergedField(BaseModel):
     path: str
     value: str | None
-    confidence: int
+    confidence: float
     candidates: list[ValueGroup]
 
 
@@ -101,6 +101,7 @@ async def _canonicalize_arena_keys(extractions: list[ReportExtraction]) -> dict[
 
 
 def _exact_groups(values: list[str | None]) -> list[ValueGroup]:
+    n_runs = len(values)
     nulls = sum(1 for v in values if v is None)
     non_null = [v for v in values if v is not None]
 
@@ -111,13 +112,13 @@ def _exact_groups(values: list[str | None]) -> list[ValueGroup]:
 
     result = []
     if nulls:
-        result.append(ValueGroup(canonical_value=None, count=nulls, variants=[]))
+        result.append(ValueGroup(canonical_value=None, confidence=nulls / n_runs, variants=[]))
     for counter in groups.values():
         canonical, _ = counter.most_common(1)[0]
         result.append(
             ValueGroup(
                 canonical_value=canonical,
-                count=sum(counter.values()),
+                confidence=sum(counter.values()) / n_runs,
                 variants=list(counter.keys()),
             )
         )
@@ -155,11 +156,11 @@ async def merge(extractions: list[ReportExtraction]) -> list[MergedField]:
                 if null_group:
                     groups.append(null_group)
                 for llm_group in llm_groups.groups:
-                    count = sum(exact_by_variant[v].count for v in llm_group.variants)
+                    confidence = sum(exact_by_variant[v].confidence for v in llm_group.variants)
                     groups.append(
                         ValueGroup(
                             canonical_value=llm_group.canonical_value,
-                            count=count,
+                            confidence=confidence,
                             variants=llm_group.variants,
                         )
                     )
@@ -170,13 +171,13 @@ async def merge(extractions: list[ReportExtraction]) -> list[MergedField]:
                     len(llm_groups.groups),
                 )
 
-        groups.sort(key=lambda g: g.count, reverse=True)
+        groups.sort(key=lambda g: g.confidence, reverse=True)
         winner = groups[0]
         merged_fields.append(
             MergedField(
                 path=path,
                 value=winner.canonical_value,
-                confidence=winner.count,
+                confidence=winner.confidence,
                 candidates=groups,
             )
         )

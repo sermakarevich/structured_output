@@ -10,14 +10,14 @@ from so.ai.merge import MergedField, ValueGroup
 PAGES = ["img1", "img2"]
 
 
-def _field(path: str, confidence: int) -> MergedField:
+def _field(path: str, confidence: float) -> MergedField:
     return MergedField(
         path=path,
         value="a",
         confidence=confidence,
         candidates=[
-            ValueGroup(canonical_value="a", count=confidence, variants=["a"]),
-            ValueGroup(canonical_value="b", count=1, variants=["b"]),
+            ValueGroup(canonical_value="a", confidence=confidence, variants=["a"]),
+            ValueGroup(canonical_value="b", confidence=0.1, variants=["b"]),
         ],
     )
 
@@ -33,13 +33,13 @@ async def test_one_call_per_field_with_path_and_counts(monkeypatch):
         return Investigation(path="ignored", verdict="a", reasoning="r", resolved=True)
 
     monkeypatch.setattr(llm, "structured", fake)
-    fields = [_field("title", 2), _field("summary.total", 3)]
+    fields = [_field("title", 0.2), _field("summary.total", 0.3)]
     results = await investigate.investigate(PAGES, fields)
 
     assert len(calls) == 2
     assert "title" in calls[0]
-    assert "2 runs" in calls[0]
-    assert "1 runs" in calls[0]
+    assert "20% of runs" in calls[0]
+    assert "10% of runs" in calls[0]
     assert "summary.total" in calls[1]
     assert len(results) == 2
 
@@ -51,7 +51,7 @@ async def test_path_forced_to_field_path(monkeypatch):
         return Investigation(path="wrong.path", verdict="a", reasoning="r", resolved=True)
 
     monkeypatch.setattr(llm, "structured", fake)
-    results = await investigate.investigate(PAGES, [_field("title", 2)])
+    results = await investigate.investigate(PAGES, [_field("title", 0.2)])
 
     assert results[0].path == "title"
 
@@ -65,7 +65,7 @@ async def test_failed_investigation_dropped(monkeypatch):
         return Investigation(path="ignored", verdict="a", reasoning="r", resolved=True)
 
     monkeypatch.setattr(llm, "structured", fake)
-    fields = [_field("title", 2), _field("summary.total", 3)]
+    fields = [_field("title", 0.2), _field("summary.total", 0.3)]
     results = await investigate.investigate(PAGES, fields)
 
     assert len(results) == 1

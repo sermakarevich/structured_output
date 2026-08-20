@@ -28,7 +28,7 @@ def test_round_trip():
 
 def test_nested_fields_reachable():
     model = ReportExtraction(
-        publisher={"name": "Org", "business_unit": "Research"},
+        publisher={"name": "Org", "publication_date": "October 2024"},
         arenas=[
             {
                 "name": "AI",
@@ -39,7 +39,7 @@ def test_nested_fields_reachable():
         ],
     )
     assert model.publisher.name == "Org"
-    assert model.publisher.business_unit == "Research"
+    assert model.publisher.publication_date == "October 2024"
     arena = model.arenas[0]
     assert arena.revenue_2022_billion_usd == 10.0
     assert arena.revenue_2040_billion_usd.low == 20.0

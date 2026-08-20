@@ -2,7 +2,7 @@
 
 A small, public, readable demo showing how to make LLM (Large Language Model) structured
 output *trustworthy*: run the same extraction many times, merge the answers, count how
-often each value appears (that count is the confidence score), and automatically
+often each value appears (that share of runs is the confidence score), and automatically
 investigate the values the runs disagreed on.
 
 This is a simplified public version of the private `ai_doc_classifier` project.
@@ -21,9 +21,9 @@ This is a simplified public version of the private `ai_doc_classifier` project.
         │
         ▼
   merge (LLM)          ← group semantically equal values ("MGI" == "McKinsey Global Institute")
-        │                 confidence = number of runs (out of 10) that produced the value
+        │                 confidence = share of runs that produced the value (0.0–1.0)
         ▼
-  investigate (LLM)    ← every leaf field with confidence < 3 gets a focused
+  investigate (LLM)    ← every leaf field with confidence < 0.3 gets a focused
         │                 second-look call with the disagreeing candidates
         ▼
   result.json          ← final values + confidence + investigation notes
@@ -36,8 +36,8 @@ This is a simplified public version of the private `ai_doc_classifier` project.
 - **One structured output schema with nested fields** (see `schemas/arena_report.py`).
 - Extraction runs **10 times** against the same document.
 - **Merge procedure uses an LLM** to group semantically equivalent values;
-  **confidence score = number of occurrences among the 10 runs** (integer 0–10).
-- **Investigation procedure** runs for every leaf field with **confidence < 3**.
+  **confidence score = share of runs that produced the value** (float 0.0–1.0).
+- **Investigation procedure** runs for every leaf field with **confidence < 0.3**.
 - All tunable values live in **`config.py`** — nothing magic anywhere else.
 - Backend: **`qwen3.8:27b` served by Ollama on the RTX server** (vision-capable).
 - **The document goes to the model as page images, not extracted text** — rendering
@@ -58,7 +58,7 @@ TIMEOUT_S = 240.0
 # --- experiment --------------------------------------------------------
 PDF_PATH = "the-next-big-arenas-of-competition-executive-summary-final.pdf"
 N_RUNS = 10                    # how many independent extraction calls
-CONFIDENCE_THRESHOLD = 3       # fields with confidence < this get investigated
+CONFIDENCE_THRESHOLD = 0.3     # fields with confidence < this share get investigated
 RENDER_DPI = 100               # PDF page → PNG rendering resolution
 CONCURRENCY = 3                # max extraction calls in flight at once
 SCHEMA_NAME = "arena_report"   # selects so.schemas.<SCHEMA_NAME>
@@ -130,7 +130,7 @@ sends page images.
 ```python
 class Publisher(BaseModel):
     name: str | None            # "Organization that published the report"
-    business_unit: str | None   # "Research arm / institute within the organization"
+    publication_date: str | None  # "Publication date of the report"
 
 class Range(BaseModel):
     low: float | None           # "Lower bound of the range"
@@ -144,7 +144,6 @@ class Arena(BaseModel):
 
 class ReportExtraction(BaseModel):   # ← the one schema of the demo
     title: str | None
-    publication_date: str | None
     publisher: Publisher
     num_arenas: int | None       # "Number of future arenas identified"
     arenas: list[Arena]          # "EVERY future arena in the report with all its parameters"
@@ -206,13 +205,13 @@ async def extract_n_times(pages: list[str]) -> list[ReportExtraction]:
 ```python
 class ValueGroup(BaseModel):
     canonical_value: str | None   # best representative of the group
-    count: int                    # occurrences among the runs  ← THE confidence score
+    confidence: float             # share of runs in this group  ← THE confidence score
     variants: list[str]           # raw distinct strings merged into this group
 
 class MergedField(BaseModel):
     path: str                     # e.g. "publisher.name"
     value: str | None             # canonical value of the winning group
-    confidence: int               # count of the winning group (0..N_RUNS)
+    confidence: float             # confidence of the winning group (0.0–1.0)
     candidates: list[ValueGroup]  # all groups, winner first
 
 async def merge(extractions: list[ReportExtraction]) -> list[MergedField]
@@ -227,9 +226,9 @@ Per leaf path:
 3. If ≤1 distinct value → done, no LLM call.
 4. Else **one** LLM call (`merge_prompt`) that clusters the distinct variants into
    semantically equivalent groups and picks the most complete variant as canonical.
-   A group's count = sum of the counts of its variants. If the LLM loses or invents
+   A group's confidence = sum of its variants' shares. If the LLM loses or invents
    variants, fall back to the exact pre-groups (log a warning).
-5. Winner = group with the highest count; `confidence = winner.count`.
+5. Winner = group with the highest confidence; `confidence = winner.confidence`.
    Nulls form their own group and can win (meaning: "the field is genuinely absent").
 
 ## ai/investigate.py — second look at shaky fields
@@ -246,7 +245,7 @@ async def investigate(pages: list[str], low_confidence: list[MergedField]) -> li
 
 For each merged field with `confidence < CONFIDENCE_THRESHOLD`: one focused LLM call
 (`investigation_prompt`) that gets the page images, the field path, and all
-candidate groups with their counts, and must decide the correct value citing a verbatim
+candidate groups with their shares, and must decide the correct value citing a verbatim
 quote. Investigations run concurrently under the same semaphore.
 
 The investigation **does not overwrite** the merged value — the final result shows the

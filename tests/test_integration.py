@@ -8,9 +8,8 @@ from so import main
 
 SCALAR_LEAF_PATHS = {
     "title",
-    "publication_date",
     "publisher.name",
-    "publisher.business_unit",
+    "publisher.publication_date",
     "num_arenas",
 }
 
@@ -47,7 +46,7 @@ def test_pipeline_against_real_backend():
     )
 
     title = next(f for f in result.fields if f.path == "title")
-    assert title.confidence >= 6
+    assert title.confidence >= 0.6
     for field in result.fields:
         if field.confidence < config.CONFIDENCE_THRESHOLD:
             assert any(i.path == field.path for i in result.investigations)

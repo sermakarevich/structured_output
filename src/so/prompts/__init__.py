@@ -18,9 +18,9 @@ def merge_prompt(path: str, variants: list[str]) -> str:
     return _load("merge").format(path=path, listed=listed)
 
 
-def investigation_prompt(path: str, candidates: list[tuple[str | None, int]]) -> str:
+def investigation_prompt(path: str, candidates: list[tuple[str | None, float]]) -> str:
     listed = "\n".join(
-        f"{value if value is not None else 'not found'} — {count} runs"
-        for value, count in candidates
+        f"{value if value is not None else 'not found'} — {confidence:.0%} of runs"
+        for value, confidence in candidates
     )
     return _load("investigation").format(path=path, listed=listed)

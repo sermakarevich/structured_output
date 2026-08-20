@@ -22,10 +22,10 @@ fields that scored low.
         ▼
   merge (LLM)          ← flatten to leaf paths, group semantically equal values
         │                 ("MGI" == "McKinsey Global Institute")
-        │                 confidence = number of runs (out of 10) that produced the value
+        │                 confidence = share of runs that produced the value (0.0–1.0)
         ▼
   investigate (LLM)    ← a focused second-look call, with the disagreeing candidates,
-        │                 for every leaf whose confidence < 3, and for every leaf where
+        │                 for every leaf whose confidence < 0.3, and for every leaf where
         │                 "not found" won but some runs did find a value
         ▼
   result.json          ← final values + confidence + investigation notes
@@ -103,18 +103,18 @@ spelling-variant split described above; a rerun today would fold
 
 ```
 PATH                                                                           VALUE       CONFIDENCE  INVESTIGATED
-arenas.ai software and services.revenue_2022_billion_usd                      85.0        7/7         -
-arenas.batteries.revenue_2022_billion_usd                                     90.0        6/7         -
-arenas.biopharmaceuticals.growth_rate_pct.high                                            6/7         not_found
-arenas.digital advertising.growth_rate_pct.high                               24.0        2/7         24.0
-arenas.electric vehicles (evs).revenue_2022_billion_usd                                   6/7         1000.0
-arenas.electric vehicles.revenue_2040_billion_usd.high                        12000.0     2/7         13000.0
-arenas.shared autonomous vehicles.growth_rate_pct.high                                    4/7         not found
-arenas.software.growth_rate_pct.low                                                       6/7         17.0
-num_arenas                                                                                 5/7         18
-publication_date                                                                           4/7         October 2024
-publisher.name                                                                McKinsey & Company  7/7  -
-title                                                                         The next big arenas of competition  5/7  -
+arenas.ai software and services.revenue_2022_billion_usd                      85.0        1.00 (7/7)         -
+arenas.batteries.revenue_2022_billion_usd                                     90.0        0.86 (6/7)         -
+arenas.biopharmaceuticals.growth_rate_pct.high                                            0.86 (6/7)         not_found
+arenas.digital advertising.growth_rate_pct.high                               24.0        0.29 (2/7)         24.0
+arenas.electric vehicles (evs).revenue_2022_billion_usd                                   0.86 (6/7)         1000.0
+arenas.electric vehicles.revenue_2040_billion_usd.high                        12000.0     0.29 (2/7)         13000.0
+arenas.shared autonomous vehicles.growth_rate_pct.high                                    0.57 (4/7)         not found
+arenas.software.growth_rate_pct.low                                                       0.86 (6/7)         17.0
+num_arenas                                                                                 0.71 (5/7)         18
+publication_date                                                                           0.57 (4/7)         October 2024
+publisher.name                                                                McKinsey & Company  1.00 (7/7)  -
+title                                                                         The next big arenas of competition  0.71 (5/7)  -
 ```
 
 (full table has one row per arena × per numeric field; see `result.json` after
@@ -122,17 +122,17 @@ a run for all of them)
 
 A few rows show the mechanism at work:
 
-- **`num_arenas` (5/7, investigated → 18)** — most runs left it null, but two
+- **`num_arenas` (0.71 (5/7), investigated → 18)** — most runs left it null, but two
   runs disagreed with a value, so the null "win" gets a second look and the
   real count is recovered.
-- **`arenas.electric vehicles (evs).revenue_2022_billion_usd` (6/7, investigated
+- **`arenas.electric vehicles (evs).revenue_2022_billion_usd` (0.86 (6/7), investigated
   → 1000.0)** — this is a spelling variant of `arenas.electric vehicles`
   (no `(evs)`, name-keyed as a separate arena). Only one run used this
   spelling, so its own leaves are mostly null and get investigated too.
-- **`arenas.digital advertising.growth_rate_pct.high` (2/7, investigated →
+- **`arenas.digital advertising.growth_rate_pct.high` (0.29 (2/7), investigated →
   24.0)** — genuine disagreement across runs on a number, resolved by a
   focused follow-up call.
-- **`arenas.biopharmaceuticals.growth_rate_pct.high` (6/7, investigated →
+- **`arenas.biopharmaceuticals.growth_rate_pct.high` (0.86 (6/7), investigated →
   not_found)** — investigation can also *confirm* that a value really isn't
   in the document.
 

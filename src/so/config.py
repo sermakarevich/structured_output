@@ -9,7 +9,7 @@ SCHEMA_NAME = "arena_report"
 PROMPT_VERSION = "v1"
 PDF_PATH = "the-next-big-arenas-of-competition-executive-summary-final.pdf"
 N_RUNS = 10
-CONFIDENCE_THRESHOLD = 3
+CONFIDENCE_THRESHOLD = 0.3
 CONCURRENCY = 3
 RENDER_DPI = 100
 

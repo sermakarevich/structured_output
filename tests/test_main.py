@@ -10,18 +10,18 @@ from so.schemas.arena_report import ReportExtraction
 PAGES = ["img1", "img2"]
 
 
-def _field(path: str, confidence: int) -> MergedField:
+def _field(path: str, confidence: float) -> MergedField:
     return MergedField(
         path=path,
         value="v",
         confidence=confidence,
-        candidates=[ValueGroup(canonical_value="v", count=confidence, variants=["v"])],
+        candidates=[ValueGroup(canonical_value="v", confidence=confidence, variants=["v"])],
     )
 
 
 @pytest.mark.asyncio
 async def test_run_wires_stages_and_filters_by_threshold(monkeypatch):
-    fields = [_field("title", 5), _field("publisher.name", 1)]
+    fields = [_field("title", 0.5), _field("publisher.name", 0.1)]
 
     async def fake_extract_n_times(pages):
         assert pages == PAGES
@@ -53,7 +53,7 @@ async def test_run_wires_stages_and_filters_by_threshold(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_result_serializes_to_json(monkeypatch):
-    fields = [_field("title", 5)]
+    fields = [_field("title", 0.5)]
 
     monkeypatch.setattr(main, "render_pdf", lambda path: PAGES)
     monkeypatch.setattr(main, "extract_n_times", lambda pages: _async_return([ReportExtraction()]))
@@ -73,10 +73,10 @@ async def test_run_investigates_null_winner_with_non_null_runner_up(monkeypatch)
     field = MergedField(
         path="publication_date",
         value=None,
-        confidence=7,
+        confidence=0.7,
         candidates=[
-            ValueGroup(canonical_value=None, count=7, variants=[]),
-            ValueGroup(canonical_value="October 2024", count=3, variants=["October 2024"]),
+            ValueGroup(canonical_value=None, confidence=0.7, variants=[]),
+            ValueGroup(canonical_value="October 2024", confidence=0.3, variants=["October 2024"]),
         ],
     )
 
@@ -101,8 +101,8 @@ async def test_run_does_not_investigate_null_winner_when_all_candidates_null(mon
     field = MergedField(
         path="publication_date",
         value=None,
-        confidence=10,
-        candidates=[ValueGroup(canonical_value=None, count=10, variants=[])],
+        confidence=1.0,
+        candidates=[ValueGroup(canonical_value=None, confidence=1.0, variants=[])],
     )
 
     investigated_paths = []

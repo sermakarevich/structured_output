@@ -13,8 +13,7 @@ def make_extraction(**kwargs):
 def test_flatten_all_paths():
     extraction = make_extraction(
         title="Report",
-        publication_date="2024",
-        publisher=Publisher(name="Org", business_unit="Research"),
+        publisher=Publisher(name="Org", publication_date="2024"),
         num_arenas=2,
         arenas=[
             Arena(
@@ -29,9 +28,8 @@ def test_flatten_all_paths():
     flat = merge.flatten(extraction)
     assert flat == {
         "title": "Report",
-        "publication_date": "2024",
         "publisher.name": "Org",
-        "publisher.business_unit": "Research",
+        "publisher.publication_date": "2024",
         "num_arenas": "2",
         "arenas.ai.revenue_2022_billion_usd": "10.0",
         "arenas.ai.revenue_2040_billion_usd.low": "20.0",
@@ -86,9 +84,9 @@ async def test_union_path_missing_arena_counts_as_none(monkeypatch):
     path = "arenas.robotics.revenue_2022_billion_usd"
     field = next(f for f in results if f.path == path)
     assert field.value == "5.0"
-    assert field.confidence == 2
+    assert field.confidence == pytest.approx(2 / 3)
     null_group = next(g for g in field.candidates if g.canonical_value is None)
-    assert null_group.count == 1
+    assert null_group.confidence == pytest.approx(1 / 3)
 
 
 @pytest.mark.asyncio
@@ -107,7 +105,7 @@ async def test_unanimous_value_no_llm_call(monkeypatch):
 
     title_field = next(f for f in results if f.path == "title")
     assert title_field.value == "Same Title"
-    assert title_field.confidence == n_runs
+    assert title_field.confidence == 1.0
     assert not called
 
 
@@ -133,7 +131,7 @@ async def test_llm_clusters_variants_counts_summed(monkeypatch):
 
     title_field = next(f for f in results if f.path == "title")
     assert title_field.value == "McKinsey Global Institute"
-    assert title_field.confidence == 10
+    assert title_field.confidence == pytest.approx(1.0)
     assert len(title_field.candidates) == 1
 
 
@@ -152,7 +150,7 @@ async def test_llm_missing_variant_falls_back_to_exact(monkeypatch):
 
     title_field = next(f for f in results if f.path == "title")
     assert title_field.value == "A"
-    assert title_field.confidence == 3
+    assert title_field.confidence == pytest.approx(0.6)
     assert len(title_field.candidates) == 2
 
 
@@ -171,7 +169,7 @@ async def test_null_majority_wins_with_none_canonical(monkeypatch):
 
     title_field = next(f for f in results if f.path == "title")
     assert title_field.value is None
-    assert title_field.confidence == 6
+    assert title_field.confidence == pytest.approx(0.6)
 
 
 @pytest.mark.asyncio
@@ -206,7 +204,7 @@ async def test_arena_name_variants_canonicalized(monkeypatch):
     path = "arenas.electric vehicles.revenue_2022_billion_usd"
     field = next(f for f in results if f.path == path)
     assert field.value == "5.0"
-    assert field.confidence == 10
+    assert field.confidence == pytest.approx(1.0)
     assert not any(f.path.startswith("arenas.electric vehicles (evs)") for f in results)
 
 
@@ -265,5 +263,5 @@ async def test_confidence_math_split(monkeypatch):
     results = await merge.merge(extractions)
 
     title_field = next(f for f in results if f.path == "title")
-    assert title_field.confidence == 6
+    assert title_field.confidence == pytest.approx(0.6)
     assert title_field.value == "X"

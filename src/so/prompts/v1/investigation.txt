@@ -1,4 +1,4 @@
-Independent extraction runs disagreed about the field `{path}`. Here are the candidate values with how many runs produced each:
+Independent extraction runs disagreed about the field `{path}`. Here are the candidate values with the share of runs that produced each:
 {listed}
 
 Re-read the attached page images, including charts and tables, and decide the correct value. Cite where in the document the evidence is, with a short verbatim quote. Set resolved=false if the document is genuinely ambiguous.
