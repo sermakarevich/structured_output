@@ -1,15 +1,19 @@
 import asyncio
 import logging
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from so import config
 from so.ai.extract import extract_n_times
 from so.ai.investigate import Investigation, investigate
 from so.ai.merge import MergedField, merge
 from so.data.loader import render_pdf
+from so.schemas import load_schema
 
 logger = logging.getLogger(__name__)
+ReportExtraction = load_schema().ReportExtraction
+
+NOT_FOUND_VERDICTS = {"not found", "not_found", "none", "null", ""}
 
 
 class Result(BaseModel):
@@ -39,6 +43,67 @@ async def run() -> Result:
     )
 
 
+def _verdict_value(verdict: str | None) -> str | None:
+    if verdict is None or verdict.strip().casefold() in NOT_FOUND_VERDICTS:
+        return None
+    return verdict
+
+
+def _trusted_leaves(result: Result) -> dict[str, str | None]:
+    investigations = {i.path: i for i in result.investigations}
+    leaves = {}
+    for field in result.fields:
+        investigation = investigations.get(field.path)
+        if investigation is not None:
+            leaves[field.path] = (
+                _verdict_value(investigation.verdict) if investigation.resolved else None
+            )
+        else:
+            leaves[field.path] = (
+                field.value if field.confidence >= config.TRUST_THRESHOLD else None
+            )
+    return leaves
+
+
+def _set_path(target: dict, path: str, value: str | None) -> None:
+    parts = path.split(".")
+    for part in parts[:-1]:
+        target = target.setdefault(part, {})
+    target[parts[-1]] = value
+
+
+def _unflatten(leaves: dict[str, str | None]) -> dict:
+    nested: dict = {}
+    arenas: dict[str, dict] = {}
+    for path, value in leaves.items():
+        if path.startswith("arenas."):
+            _, key, rest = path.split(".", 2)
+            _set_path(arenas.setdefault(key, {"name": key}), rest, value)
+        else:
+            _set_path(nested, path, value)
+    nested["arenas"] = list(arenas.values())
+    return nested
+
+
+def trusted_extraction(result: Result) -> BaseModel:
+    data = _unflatten(_trusted_leaves(result))
+    while True:
+        try:
+            return ReportExtraction.model_validate(data)
+        except ValidationError as e:
+            for error in e.errors():
+                *parents, leaf = error["loc"]
+                target = data
+                for part in parents:
+                    target = target[part]
+                logger.warning(
+                    "trusted output: dropping %s (%r does not fit the schema)",
+                    ".".join(str(p) for p in error["loc"]),
+                    target[leaf],
+                )
+                target[leaf] = None
+
+
 def _print_table(result: Result) -> None:
     verdicts = {i.path: i.verdict or "-" for i in result.investigations}
     path_width = max([len(f.path) for f in result.fields] + [len("PATH")]) + 2
@@ -58,10 +123,13 @@ def main() -> None:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
     result = asyncio.run(run())
-    with open(config.RESULT_PATH, "w") as f:
+    with open(config.RESULT_RAW_PATH, "w") as f:
         f.write(result.model_dump_json(indent=2))
+    clean = trusted_extraction(result)
+    with open(config.RESULT_PATH, "w") as f:
+        f.write(clean.model_dump_json(indent=2))
     _print_table(result)
-    print(f"full result written to {config.RESULT_PATH}")
+    print(f"trusted output written to {config.RESULT_PATH}, full detail to {config.RESULT_RAW_PATH}")
 
 
 if __name__ == "__main__":

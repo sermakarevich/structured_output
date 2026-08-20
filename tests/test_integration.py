@@ -47,6 +47,10 @@ def test_pipeline_against_real_backend():
 
     title = next(f for f in result.fields if f.path == "title")
     assert title.confidence >= 0.6
+
+    clean = main.trusted_extraction(result)
+    assert clean.title is not None
+    assert any(a.revenue_2022_billion_usd is not None for a in clean.arenas)
     for field in result.fields:
         if field.confidence < config.CONFIDENCE_THRESHOLD:
             assert any(i.path == field.path for i in result.investigations)

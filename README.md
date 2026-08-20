@@ -28,7 +28,8 @@ fields that scored low.
         │                 for every leaf whose confidence < 0.3, and for every leaf where
         │                 "not found" won but some runs did find a value
         ▼
-  result.json          ← final values + confidence + investigation notes
+  result.json          ← the schema, filled only with trusted values
+  result_raw.json      ← full detail: candidates, confidences, investigation notes
 ```
 
 The pages go to the model as images, not text, so numbers that only exist inside
@@ -74,7 +75,11 @@ uv run so        # or: just run
 ```
 
 This extracts data from the bundled PDF ten times, merges the results, prints
-a table, and writes the full result to `result.json`.
+a table, and writes two files: `result.json` — the extraction schema filled
+only with values that cleared the trust bar (consensus confidence >= 0.5, or a
+resolved investigation verdict), everything else null — and `result_raw.json`
+with the full detail: every candidate value, its confidence, and the
+investigation notes.
 
 ## Testing
 
@@ -92,7 +97,7 @@ RUN_INTEGRATION=1 uv run pytest -m integration
 ## Tweaking
 
 Every tunable value — model name, server URL, number of runs, confidence
-threshold, concurrency — lives in `config.py`.
+and trust thresholds, concurrency — lives in `config.py`.
 
 ## Sample output
 
@@ -117,8 +122,8 @@ publisher.name                                                                Mc
 title                                                                         The next big arenas of competition  0.71 (5/7)  -
 ```
 
-(full table has one row per arena × per numeric field; see `result.json` after
-a run for all of them)
+(full table has one row per arena × per numeric field; see `result_raw.json`
+after a run for all of them)
 
 A few rows show the mechanism at work:
 

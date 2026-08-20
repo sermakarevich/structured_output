@@ -26,7 +26,8 @@ This is a simplified public version of the private `ai_doc_classifier` project.
   investigate (LLM)    ← every leaf field with confidence < 0.3 gets a focused
         │                 second-look call with the disagreeing candidates
         ▼
-  result.json          ← final values + confidence + investigation notes
+  result.json          ← the schema, filled only with trusted values
+  result_raw.json      ← full detail: candidates, confidences, investigation notes
 ```
 
 ## Hard requirements
@@ -65,7 +66,9 @@ SCHEMA_NAME = "arena_report"   # selects so.schemas.<SCHEMA_NAME>
 PROMPT_VERSION = "v1"          # selects so/prompts/<PROMPT_VERSION>/*.txt
 
 # --- output ------------------------------------------------------------
-RESULT_PATH = "result.json"
+TRUST_THRESHOLD = 0.5          # min confidence for a value to enter result.json
+RESULT_PATH = "result.json"      # trusted, schema-shaped output only
+RESULT_RAW_PATH = "result_raw.json"  # full detail: candidates, confidences, investigations
 ```
 
 ## Repo layout — one small package, readable top-to-bottom
@@ -266,7 +269,18 @@ async def run() -> Result:
 ```
 
 Prints a human-friendly table (path, value, confidence, investigated?) and writes
-`result.json`.
+two files:
+
+- **`result_raw.json`** — the full `Result`: every leaf with its confidence, all
+  candidate groups, all investigations. The audit trail; nothing is overwritten.
+- **`result.json`** — an instance of the extraction schema itself, holding only
+  values the pipeline stands behind: a leaf keeps its consensus value if
+  `confidence >= TRUST_THRESHOLD`; an investigated leaf carries its verdict if
+  `resolved=true` ("not found"-style verdicts become null) and null otherwise;
+  everything else is null. Leaves are unflattened back into the nested schema and
+  validated with pydantic, so consumers get typed data in the exact shape they
+  asked for; a verdict that doesn't fit the leaf's type is dropped (with a
+  warning), never silently coerced wrong.
 
 ## Testing
 
