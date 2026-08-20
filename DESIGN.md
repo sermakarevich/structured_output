@@ -102,7 +102,12 @@ structured_output/
 
 Modules are grouped by role — `ai/` (LLM calls), `data/` (local IO), `schemas/`
 and `prompts/` (swappable, versioned inputs to the LLM calls) — but the package
-stays flat within each folder and there's still no CLI framework: `uv run so`
+stays flat within each folder. Prompts are **document-independent**: anything
+specific to one document or schema (which items to list exhaustively, how to
+split organization fields, ...) belongs in the schema's `Field(description=...)`,
+which the model receives via the JSON schema; the prompt files only say how to
+read pages and emit JSON, so the same prompts serve any document/schema pair.
+There's still no CLI framework: `uv run so`
 (console script `so = "so.main:main"`, or `just run`) is the whole interface.
 
 ## schemas/ — the nested schema

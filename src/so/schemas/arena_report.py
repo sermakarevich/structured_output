@@ -23,4 +23,4 @@ class ReportExtraction(BaseModel):
     publication_date: str | None = Field(None, description="Publication date of the report")
     publisher: Publisher = Publisher()
     num_arenas: int | None = Field(None, description="Number of future arenas of competition identified")
-    arenas: list[Arena] = Field(default_factory=list, description="EVERY future arena of competition in the report, with all its parameters, read from the exhibit tables/charts")
+    arenas: list[Arena] = Field(default_factory=list, description="EVERY future arena of competition in the report, with all its numeric parameters, read from the exhibit tables/charts; do not stop after a few")
