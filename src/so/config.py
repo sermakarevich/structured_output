@@ -8,11 +8,11 @@ ERROR_SNIPPET_CHARS = 200
 SCHEMA_NAME = "arena_report"
 PROMPT_VERSION = "v1"
 PDF_PATH = "the-next-big-arenas-of-competition-executive-summary-final.pdf"
+
 N_RUNS = 10
 CONFIDENCE_THRESHOLD = 0.3
 CONCURRENCY = 3
 RENDER_DPI = 100
-
 TRUST_THRESHOLD = 0.5
 RESULT_PATH = "result.json"
 RESULT_RAW_PATH = "result_raw.json"
